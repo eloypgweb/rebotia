@@ -1,0 +1,55 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+
+const { data: jugadoras, error } = await Astro.locals.supabase
+  .from('jugadoras')
+  .select('*, equipos(nombre)')
+  .order('nombre');
+
+const errorEliminar = Astro.url.searchParams.get('error');
+---
+
+<Layout title="Jugadoras — Rebotia">
+  <div class="flex items-center justify-between">
+    <h1 class="text-2xl font-bold text-club-navy">Jugadoras</h1>
+    <a
+      href="/coach/jugadoras/nuevo"
+      class="rounded-lg bg-club-navy px-4 py-2 text-sm font-semibold text-club-white transition-colors hover:bg-club-blue hover:text-club-navy"
+    >
+      + Nueva jugadora
+    </a>
+  </div>
+
+  {error && <p class="mt-4 text-sm text-red-600">Error: {error.message}</p>}
+  {errorEliminar && <p class="mt-4 text-sm text-red-600">No se pudo eliminar: {errorEliminar}</p>}
+
+  <div class="mt-6 divide-y divide-club-blue/20 rounded-xl border border-club-blue/30 bg-white shadow-sm">
+    {jugadoras?.length === 0 && <p class="p-6 text-club-navy/60">No hay jugadoras todavía.</p>}
+    {
+      jugadoras?.map((jugadora) => (
+        <div class="flex items-center justify-between gap-4 px-6 py-4">
+          <div>
+            <p class="font-medium text-club-navy">
+              {jugadora.dorsal != null && <span class="text-club-navy/50">#{jugadora.dorsal} </span>}
+              {jugadora.nombre}
+            </p>
+            <p class="text-sm text-club-navy/60">
+              {jugadora.equipos?.nombre ?? 'Sin equipo'}
+              {jugadora.posicion && ` · ${jugadora.posicion}`}
+            </p>
+          </div>
+          <div class="flex items-center gap-4 text-sm">
+            <a href={`/coach/jugadoras/${jugadora.id}/editar`} class="font-medium text-club-navy hover:underline">
+              Editar
+            </a>
+            <form method="POST" action={`/coach/jugadoras/${jugadora.id}/eliminar`}>
+              <button type="submit" class="font-medium text-red-600 hover:underline">
+                Eliminar
+              </button>
+            </form>
+          </div>
+        </div>
+      ))
+    }
+  </div>
+</Layout>

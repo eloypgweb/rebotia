@@ -1,0 +1,11 @@
+@import "tailwindcss";
+
+@theme {
+  --color-club-navy: #000b45;
+  --color-club-blue: #66befe;
+  --color-club-white: #ffffff;
+}
+
+body {
+  @apply bg-club-white text-club-navy;
+}

@@ -1,0 +1,35 @@
+---
+import Layout from '../../layouts/Layout.astro';
+
+const { user, perfil } = Astro.locals;
+
+const secciones = [
+  { href: '/coach/equipos', titulo: 'Equipos', descripcion: 'Gestiona los equipos rivales y el propio.' },
+  { href: '/coach/jugadoras', titulo: 'Jugadoras', descripcion: 'Gestiona la plantilla de jugadoras.' },
+];
+---
+
+<Layout title="Coach — Rebotia">
+  <h1 class="text-2xl font-bold text-club-navy">Zona Coach</h1>
+
+  <div class="mt-6 rounded-xl border border-club-blue/30 bg-white p-6 shadow-sm">
+    <p class="text-club-navy/80">
+      Sesión iniciada como <span class="font-medium text-club-navy">{user?.email}</span>
+      (rol: <span class="font-medium text-club-navy">{perfil?.rol}</span>).
+    </p>
+  </div>
+
+  <div class="mt-6 grid gap-4 sm:grid-cols-2">
+    {
+      secciones.map((seccion) => (
+        <a
+          href={seccion.href}
+          class="rounded-xl border border-club-blue/30 bg-white p-6 shadow-sm transition-colors hover:border-club-blue hover:bg-club-blue/10"
+        >
+          <h2 class="text-lg font-semibold text-club-navy">{seccion.titulo}</h2>
+          <p class="mt-1 text-sm text-club-navy/70">{seccion.descripcion}</p>
+        </a>
+      ))
+    }
+  </div>
+</Layout>

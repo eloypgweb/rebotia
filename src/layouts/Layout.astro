@@ -1,0 +1,31 @@
+---
+import '../styles/global.css';
+import Navbar from '../components/Navbar.astro';
+
+interface Props {
+  title?: string;
+}
+
+const { title = 'Rebotia' } = Astro.props;
+---
+
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="generator" content={Astro.generator} />
+    <title>{title}</title>
+  </head>
+  <body class="flex min-h-screen flex-col bg-club-white text-club-navy">
+    <header class="sticky top-0 z-10 bg-club-navy shadow-md">
+      <Navbar />
+    </header>
+    <main class="mx-auto w-full max-w-4xl flex-1 px-4 py-8 sm:px-6">
+      <slot />
+    </main>
+    <footer class="bg-club-navy py-4 text-center text-sm text-club-white/70">
+      <p>&copy; {new Date().getFullYear()} Rebotia</p>
+    </footer>
+  </body>
+</html>

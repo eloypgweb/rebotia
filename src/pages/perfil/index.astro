@@ -1,0 +1,26 @@
+---
+import Layout from '../../layouts/Layout.astro';
+
+const { user, perfil } = Astro.locals;
+
+const campos = [
+  { etiqueta: 'Nombre', valor: perfil?.nombre },
+  { etiqueta: 'Email', valor: user?.email },
+  { etiqueta: 'Rol', valor: perfil?.rol },
+];
+---
+
+<Layout title="Mi perfil — Rebotia">
+  <h1 class="text-2xl font-bold text-club-navy">Mi perfil</h1>
+
+  <dl class="mt-6 divide-y divide-club-blue/20 rounded-xl border border-club-blue/30 bg-white shadow-sm">
+    {
+      campos.map((campo) => (
+        <div class="flex justify-between px-6 py-4">
+          <dt class="text-sm font-medium text-club-navy/60">{campo.etiqueta}</dt>
+          <dd class="text-sm font-medium text-club-navy">{campo.valor}</dd>
+        </div>
+      ))
+    }
+  </dl>
+</Layout>
