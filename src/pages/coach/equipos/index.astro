@@ -10,7 +10,11 @@ const errorEliminar = Astro.url.searchParams.get('error');
 ---
 
 <Layout title="Equipos — Rebotia">
-  <div class="flex items-center justify-between">
+  <a href="/coach" class="text-sm font-medium text-club-navy/70 hover:text-club-navy hover:underline">
+    ← Volver a Coach
+  </a>
+
+  <div class="mt-2 flex items-center justify-between">
     <h1 class="text-2xl font-bold text-club-navy">Equipos</h1>
     <a
       href="/coach/equipos/nuevo"

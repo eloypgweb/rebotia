@@ -1,0 +1,92 @@
+{
+	"version": 3,
+	"routes": [
+		{
+			"handle": "filesystem"
+		},
+		{
+			"src": "^/_astro/(.*)$",
+			"headers": {
+				"cache-control": "public, max-age=31536000, immutable"
+			},
+			"continue": true
+		},
+		{
+			"src": "^/_server-islands/([^/]+?)/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/_image/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/logout/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/coach/equipos/nuevo/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/coach/equipos/([^/]+?)/editar/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/coach/equipos/([^/]+?)/eliminar/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/coach/equipos/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/coach/jugadoras/nuevo/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/coach/jugadoras/([^/]+?)/editar/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/coach/jugadoras/([^/]+?)/eliminar/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/coach/jugadoras/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/coach/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/login/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/no-autorizado/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/partidos/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/perfil/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/404/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/.*$",
+			"dest": "_render",
+			"status": 404
+		}
+	]
+}

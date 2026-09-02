@@ -1,0 +1,218 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+
+let error: string | null = null;
+
+const { data: propio } = await Astro.locals.supabase
+  .from('equipos')
+  .select('id, nombre')
+  .eq('es_propio', true)
+  .limit(1)
+  .maybeSingle();
+
+const { data: rivales } = await Astro.locals.supabase
+  .from('equipos')
+  .select('id, nombre')
+  .eq('es_propio', false)
+  .order('nombre');
+
+if (Astro.request.method === 'POST' && propio) {
+  const formData = await Astro.request.formData();
+  const rivalId = formData.get('rival_id')?.toString();
+  const localia = formData.get('localia')?.toString();
+  const tipo = formData.get('tipo')?.toString();
+  const jornadaRaw = formData.get('jornada')?.toString().trim();
+  const jornada = tipo === 'liga' && jornadaRaw ? Number(jornadaRaw) : null;
+  const fecha_inicio = formData.get('fecha_inicio')?.toString();
+  const fecha_convocatoria = formData.get('fecha_convocatoria')?.toString();
+
+  if (!rivalId || !localia || !tipo || !fecha_inicio || !fecha_convocatoria) {
+    error = 'Rival, tipo, localía, hora de inicio y hora de convocatoria son obligatorios.';
+  } else {
+    const equipo_local_id = localia === 'casa' ? propio.id : rivalId;
+    const equipo_visitante_id = localia === 'casa' ? rivalId : propio.id;
+
+    const { error: insertError } = await Astro.locals.supabase.from('partidos').insert({
+      equipo_local_id,
+      equipo_visitante_id,
+      tipo,
+      jornada,
+      fecha_inicio,
+      fecha_convocatoria,
+      creado_por: Astro.locals.user?.id,
+    });
+
+    if (insertError) {
+      error = insertError.message;
+    } else {
+      return Astro.redirect('/coach/partidos');
+    }
+  }
+}
+
+const inputClass =
+  'rounded-lg border border-club-blue/40 px-3 py-2 text-club-navy outline-none focus:border-club-blue focus:ring-2 focus:ring-club-blue/30';
+const labelClass = 'text-sm font-medium text-club-navy';
+---
+
+<Layout title="Nuevo partido — Rebotia">
+  <a href="/coach" class="text-sm font-medium text-club-navy/70 hover:text-club-navy hover:underline">
+    ← Volver a Coach
+  </a>
+  <h1 class="mt-2 text-2xl font-bold text-club-navy">Nuevo partido</h1>
+
+  {
+    !propio ? (
+      <p class="mt-6 rounded-xl border border-club-blue/30 bg-white p-6 text-club-navy/70 shadow-sm">
+        Todavía no tienes marcado tu equipo propio.{' '}
+        <a href="/coach/equipos/nuevo" class="font-medium text-club-navy hover:underline">
+          Créalo primero
+        </a>{' '}
+        (marca la casilla "Es nuestro equipo").
+      </p>
+    ) : !rivales?.length ? (
+      <p class="mt-6 rounded-xl border border-club-blue/30 bg-white p-6 text-club-navy/70 shadow-sm">
+        Todavía no hay ningún equipo rival.{' '}
+        <a href="/coach/equipos/nuevo" class="font-medium text-club-navy hover:underline">
+          Crea uno primero
+        </a>
+        .
+      </p>
+    ) : (
+      <form
+        id="partido-form"
+        method="POST"
+        class="mt-6 flex max-w-md flex-col gap-4 rounded-xl border border-club-blue/30 bg-white p-6 shadow-sm"
+      >
+        {error && <p class="text-sm text-red-600">{error}</p>}
+
+        <div class="flex flex-col gap-1">
+          <label for="rival_id" class={labelClass}>
+            Rival
+          </label>
+          <select id="rival_id" name="rival_id" required class={inputClass}>
+            {rivales.map((rival) => (
+              <option value={rival.id}>{rival.nombre}</option>
+            ))}
+          </select>
+        </div>
+
+        <fieldset class="flex flex-col gap-1">
+          <legend class={labelClass}>Localía</legend>
+          <label class="flex items-center gap-2 text-sm text-club-navy">
+            <input type="radio" name="localia" value="casa" checked required />
+            Somos locales
+          </label>
+          <label class="flex items-center gap-2 text-sm text-club-navy">
+            <input type="radio" name="localia" value="fuera" required />
+            Somos visitantes
+          </label>
+        </fieldset>
+
+        <div class="flex flex-col gap-1">
+          <label for="tipo" class={labelClass}>
+            Tipo
+          </label>
+          <select id="tipo" name="tipo" required class={inputClass}>
+            <option value="liga" selected>Liga</option>
+            <option value="amistoso">Amistoso</option>
+          </select>
+        </div>
+
+        <div id="jornada_wrapper" class="flex flex-col gap-1">
+          <label for="jornada" class={labelClass}>
+            Jornada
+          </label>
+          <input id="jornada" name="jornada" type="number" min="1" class={inputClass} />
+        </div>
+
+        <div class="flex flex-col gap-1">
+          <label for="dia_input" class={labelClass}>
+            Día de partido
+          </label>
+          <input id="dia_input" type="date" required class={inputClass} />
+        </div>
+
+        <div class="flex flex-col gap-1">
+          <label for="inicio_input" class={labelClass}>
+            Hora de inicio
+          </label>
+          <input id="inicio_input" type="time" required class={inputClass} />
+        </div>
+
+        <div class="flex flex-col gap-1">
+          <label for="convocatoria_input" class={labelClass}>
+            Hora de convocatoria
+          </label>
+          <input id="convocatoria_input" type="time" required class={inputClass} />
+        </div>
+
+        <input id="inicio_hidden" name="fecha_inicio" type="hidden" />
+        <input id="convocatoria_hidden" name="fecha_convocatoria" type="hidden" />
+
+        <div class="mt-2 flex gap-4">
+          <button
+            type="submit"
+            class="rounded-lg bg-club-navy px-4 py-2 font-semibold text-club-white transition-colors hover:bg-club-blue hover:text-club-navy"
+          >
+            Crear
+          </button>
+          <a href="/coach/partidos" class="rounded-lg px-4 py-2 font-semibold text-club-navy hover:underline">
+            Cancelar
+          </a>
+        </div>
+      </form>
+    )
+  }
+
+  <script>
+    const form = document.getElementById('partido-form') as HTMLFormElement | null;
+    const diaInput = document.getElementById('dia_input') as HTMLInputElement | null;
+    const inicioInput = document.getElementById('inicio_input') as HTMLInputElement | null;
+    const inicioHidden = document.getElementById('inicio_hidden') as HTMLInputElement | null;
+    const convInput = document.getElementById('convocatoria_input') as HTMLInputElement | null;
+    const convHidden = document.getElementById('convocatoria_hidden') as HTMLInputElement | null;
+    const tipoSelect = document.getElementById('tipo') as HTMLSelectElement | null;
+    const jornadaWrapper = document.getElementById('jornada_wrapper') as HTMLDivElement | null;
+    const jornadaInput = document.getElementById('jornada') as HTMLInputElement | null;
+
+    if (tipoSelect && jornadaWrapper && jornadaInput) {
+      const actualizarJornada = () => {
+        const esLiga = tipoSelect.value === 'liga';
+        jornadaWrapper.hidden = !esLiga;
+        if (!esLiga) jornadaInput.value = '';
+      };
+
+      tipoSelect.addEventListener('change', actualizarJornada);
+      actualizarJornada();
+    }
+
+    if (form && diaInput && inicioInput && inicioHidden && convInput && convHidden) {
+      const pad = (n: number) => String(n).padStart(2, '0');
+
+      const toTime = (date: Date) => `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+
+      let convocatoriaTocada = false;
+      convInput.addEventListener('input', () => {
+        convocatoriaTocada = true;
+      });
+
+      inicioInput.addEventListener('input', () => {
+        if (!inicioInput.value || convocatoriaTocada) return;
+        const [horas, minutos] = inicioInput.value.split(':').map(Number);
+        const inicio = new Date(2000, 0, 1, horas, minutos);
+        const convocatoria = new Date(inicio.getTime() - 60 * 60 * 1000);
+        convInput.value = toTime(convocatoria);
+      });
+
+      form.addEventListener('submit', () => {
+        if (diaInput.value && inicioInput.value) {
+          inicioHidden.value = new Date(`${diaInput.value}T${inicioInput.value}`).toISOString();
+        }
+        if (diaInput.value && convInput.value) {
+          convHidden.value = new Date(`${diaInput.value}T${convInput.value}`).toISOString();
+        }
+      });
+    }
+  </script>
+</Layout>

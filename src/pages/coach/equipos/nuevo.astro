@@ -1,12 +1,13 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
 
+const CATEGORIA = 'Infantil';
+
 let error: string | null = null;
 
 if (Astro.request.method === 'POST') {
   const formData = await Astro.request.formData();
   const nombre = formData.get('nombre')?.toString().trim();
-  const categoria = formData.get('categoria')?.toString().trim() || null;
   const escudo_url = formData.get('escudo_url')?.toString().trim() || null;
   const es_propio = formData.get('es_propio') === 'on';
 
@@ -15,7 +16,7 @@ if (Astro.request.method === 'POST') {
   } else {
     const { error: insertError } = await Astro.locals.supabase
       .from('equipos')
-      .insert({ nombre, categoria, escudo_url, es_propio });
+      .insert({ nombre, categoria: CATEGORIA, escudo_url, es_propio });
 
     if (insertError) {
       error = insertError.message;
@@ -31,7 +32,10 @@ const labelClass = 'text-sm font-medium text-club-navy';
 ---
 
 <Layout title="Nuevo equipo — Rebotia">
-  <h1 class="text-2xl font-bold text-club-navy">Nuevo equipo</h1>
+  <a href="/coach" class="text-sm font-medium text-club-navy/70 hover:text-club-navy hover:underline">
+    ← Volver a Coach
+  </a>
+  <h1 class="mt-2 text-2xl font-bold text-club-navy">Nuevo equipo</h1>
 
   <form
     method="POST"
@@ -45,8 +49,8 @@ const labelClass = 'text-sm font-medium text-club-navy';
     </div>
 
     <div class="flex flex-col gap-1">
-      <label for="categoria" class={labelClass}>Categoría</label>
-      <input id="categoria" name="categoria" type="text" class={inputClass} />
+      <span class={labelClass}>Categoría</span>
+      <p class="rounded-lg border border-club-blue/20 bg-club-blue/5 px-3 py-2 text-club-navy/70">{CATEGORIA}</p>
     </div>
 
     <div class="flex flex-col gap-1">

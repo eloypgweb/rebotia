@@ -1,0 +1,53 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+
+const { data: partidos, error } = await Astro.locals.supabase
+  .from('partidos')
+  .select('*, local:equipo_local_id(nombre), visitante:equipo_visitante_id(nombre)')
+  .order('fecha_inicio', { ascending: false });
+
+const formateador = new Intl.DateTimeFormat('es-ES', {
+  dateStyle: 'medium',
+  timeStyle: 'short',
+});
+---
+
+<Layout title="Partidos — Rebotia">
+  <a href="/coach" class="text-sm font-medium text-club-navy/70 hover:text-club-navy hover:underline">
+    ← Volver a Coach
+  </a>
+
+  <div class="mt-2 flex items-center justify-between">
+    <h1 class="text-2xl font-bold text-club-navy">Partidos</h1>
+    <a
+      href="/coach/partidos/nuevo"
+      class="rounded-lg bg-club-navy px-4 py-2 text-sm font-semibold text-club-white transition-colors hover:bg-club-blue hover:text-club-navy"
+    >
+      + Nuevo partido
+    </a>
+  </div>
+
+  {error && <p class="mt-4 text-sm text-red-600">Error: {error.message}</p>}
+
+  <div class="mt-6 divide-y divide-club-blue/20 rounded-xl border border-club-blue/30 bg-white shadow-sm">
+    {partidos?.length === 0 && <p class="p-6 text-club-navy/60">No hay partidos todavía.</p>}
+    {
+      partidos?.map((partido) => (
+        <div class="flex items-center justify-between gap-4 px-6 py-4">
+          <div>
+            <p class="font-medium text-club-navy">
+              {partido.local?.nombre} <span class="text-club-navy/40">vs</span> {partido.visitante?.nombre}
+            </p>
+            <p class="text-sm text-club-navy/60">
+              {formateador.format(new Date(partido.fecha_inicio))}
+              {' · '}
+              {partido.tipo === 'amistoso' ? 'Amistoso' : `Liga${partido.jornada != null ? ` · Jornada ${partido.jornada}` : ''}`}
+              {' · '}
+              {partido.fase_actual}
+            </p>
+          </div>
+        </div>
+      ))
+    }
+  </div>
+</Layout>

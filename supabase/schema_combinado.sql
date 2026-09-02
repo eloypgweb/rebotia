@@ -114,11 +114,15 @@ create type public.estado_partido as enum (
   'finalizado'
 );
 
+create type public.tipo_partido as enum ('liga', 'amistoso');
+
 create table public.partidos (
   id uuid primary key default gen_random_uuid(),
   equipo_local_id uuid not null references public.equipos (id),
   equipo_visitante_id uuid not null references public.equipos (id),
-  fecha date not null,
+  fecha_inicio timestamptz not null,
+  fecha_convocatoria timestamptz not null,
+  tipo public.tipo_partido not null default 'liga',
   jornada integer,
   fase_actual public.estado_partido not null default 'pre_partido',
   goles_local integer not null default 0,
@@ -142,6 +146,32 @@ create policy "partidos_update_admin_editor"
   on public.partidos for update to authenticated
   using (public.es_admin_o_editor())
   with check (public.es_admin_o_editor());
+
+-- Un partido siempre debe enfrentar a nuestro equipo (es_propio) contra un
+-- rival: nunca dos propios ni dos rivales entre sí.
+create or replace function public.validar_equipos_partido()
+returns trigger
+language plpgsql
+as $$
+declare
+  local_propio boolean;
+  visitante_propio boolean;
+begin
+  select es_propio into local_propio from public.equipos where id = new.equipo_local_id;
+  select es_propio into visitante_propio from public.equipos where id = new.equipo_visitante_id;
+
+  if local_propio is not distinct from visitante_propio then
+    raise exception 'Un partido debe ser entre nuestro equipo y un rival.';
+  end if;
+
+  return new;
+end;
+$$;
+
+create trigger validar_equipos_partido
+  before insert or update on public.partidos
+  for each row
+  execute function public.validar_equipos_partido();
 
 -- =========================================================
 -- 5. convocatorias
