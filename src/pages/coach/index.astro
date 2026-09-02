@@ -13,11 +13,33 @@ const secciones = [
 <Layout title="Coach — Rebotia">
   <h1 class="text-2xl font-bold text-club-navy">Zona Coach</h1>
 
-  <div class="mt-6 rounded-xl border border-club-blue/30 bg-white p-6 shadow-sm">
-    <p class="text-club-navy/80">
-      Sesión iniciada como <span class="font-medium text-club-navy">{user?.email}</span>
-      (rol: <span class="font-medium text-club-navy">{perfil?.rol}</span>).
-    </p>
+  <div class="mt-6 flex items-center gap-4 rounded-xl border border-club-blue/30 bg-white p-6 shadow-sm">
+    {
+      perfil?.avatar_url ? (
+        <img
+          src={perfil.avatar_url}
+          alt="Foto de perfil"
+          class="h-12 w-12 shrink-0 rounded-full object-cover"
+        />
+      ) : (
+        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-club-navy text-lg font-bold text-club-white">
+          {(perfil?.nombre ?? user?.email ?? '?').charAt(0).toUpperCase()}
+        </div>
+      )
+    }
+
+    <div class="min-w-0">
+      <p class="truncate font-semibold text-club-navy">{perfil?.nombre ?? user?.email}</p>
+      <p class="truncate text-sm text-club-navy/60">{user?.email}</p>
+    </div>
+
+    {
+      perfil?.rol && (
+        <span class="ml-auto shrink-0 rounded-full bg-club-blue/15 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-club-navy">
+          {perfil.rol}
+        </span>
+      )
+    }
   </div>
 
   <div class="mt-6 grid gap-4 sm:grid-cols-2">

@@ -11,6 +11,7 @@ create table public.perfiles (
   id uuid primary key references auth.users (id) on delete cascade,
   nombre text not null,
   rol public.rol_usuario not null default 'viewer',
+  avatar_url text,
   created_at timestamptz not null default now()
 );
 
@@ -333,10 +334,32 @@ create trigger on_auth_user_created
   execute function public.crear_perfil_para_nuevo_usuario();
 
 -- =========================================================
+-- 10. avatares de perfil (Storage)
+-- =========================================================
+insert into storage.buckets (id, name, public)
+values ('avatars', 'avatars', true)
+on conflict (id) do nothing;
+
+create policy "avatares_insert_propio"
+  on storage.objects for insert to authenticated
+  with check (
+    bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+create policy "avatares_update_propio"
+  on storage.objects for update to authenticated
+  using (
+    bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text
+  )
+  with check (
+    bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+-- =========================================================
 -- Nota: crear el primer admin (ejecutar aparte, después de que ese
--- usuario haya iniciado sesión al menos una vez por magic link, para
--- que ya exista en auth.users y el trigger le haya creado su perfil
--- viewer; este UPDATE lo asciende a admin):
+-- usuario ya exista en auth.users -- lo crea el admin desde
+-- Authentication → Users con email + contraseña -- y el trigger le haya
+-- creado su perfil viewer; este UPDATE lo asciende a admin):
 --
 -- update public.perfiles set rol = 'admin' where id = '<uuid-del-usuario>';
 -- =========================================================

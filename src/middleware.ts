@@ -31,7 +31,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   if (user) {
     const { data: perfil } = await supabase
       .from('perfiles')
-      .select('nombre, rol')
+      .select('nombre, rol, avatar_url')
       .eq('id', user.id)
       .single();
 

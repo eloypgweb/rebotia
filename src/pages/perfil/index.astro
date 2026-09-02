@@ -1,7 +1,64 @@
 ---
+import { createClient } from '@supabase/supabase-js';
 import Layout from '../../layouts/Layout.astro';
 
 const { user, perfil } = Astro.locals;
+
+let error: string | null = null;
+
+if (Astro.request.method === 'POST' && user) {
+  const formData = await Astro.request.formData();
+  const file = formData.get('avatar');
+
+  if (!(file instanceof File) || file.size === 0) {
+    error = 'Selecciona una imagen.';
+  } else if (!file.type.startsWith('image/')) {
+    error = 'El archivo debe ser una imagen.';
+  } else if (file.size > 5 * 1024 * 1024) {
+    error = 'La imagen no puede pesar más de 5 MB.';
+  } else {
+    const {
+      data: { session },
+    } = await Astro.locals.supabase.auth.getSession();
+
+    if (!session) {
+      error = 'Tu sesión ha caducado. Vuelve a iniciar sesión e inténtalo de nuevo.';
+    } else {
+      // Cliente aparte con el token de la sesión forzado en la cabecera,
+      // para que Storage vea el JWT del usuario sí o sí (el cliente SSR
+      // compartido no lo garantiza en las llamadas a storage).
+      const supabaseConToken = createClient(import.meta.env.PUBLIC_SUPABASE_URL, import.meta.env.PUBLIC_SUPABASE_KEY, {
+        global: { headers: { Authorization: `Bearer ${session.access_token}` } },
+      });
+
+      const extension = file.name.split('.').pop() || 'jpg';
+      const path = `${user.id}/avatar.${extension}`;
+
+      const { error: uploadError } = await supabaseConToken.storage
+        .from('avatars')
+        .upload(path, file, { upsert: true, contentType: file.type });
+
+      if (uploadError) {
+        error = `Error al subir la foto: ${uploadError.message}`;
+      } else {
+        const {
+          data: { publicUrl },
+        } = supabaseConToken.storage.from('avatars').getPublicUrl(path);
+
+        const { error: updateError } = await Astro.locals.supabase
+          .from('perfiles')
+          .update({ avatar_url: `${publicUrl}?v=${Date.now()}` })
+          .eq('id', user.id);
+
+        if (updateError) {
+          error = `Error al guardar el perfil: ${updateError.message}`;
+        } else {
+          return Astro.redirect('/perfil');
+        }
+      }
+    }
+  }
+}
 
 const campos = [
   { etiqueta: 'Nombre', valor: perfil?.nombre },
@@ -12,6 +69,41 @@ const campos = [
 
 <Layout title="Mi perfil — Rebotia">
   <h1 class="text-2xl font-bold text-club-navy">Mi perfil</h1>
+
+  <div class="mt-6 flex flex-wrap items-center gap-6 rounded-xl border border-club-blue/30 bg-white p-6 shadow-sm">
+    {
+      perfil?.avatar_url ? (
+        <img src={perfil.avatar_url} alt="Foto de perfil" class="h-20 w-20 rounded-full object-cover" />
+      ) : (
+        <div class="flex h-20 w-20 items-center justify-center rounded-full bg-club-navy text-2xl font-bold text-club-white">
+          {(perfil?.nombre ?? user?.email ?? '?').charAt(0).toUpperCase()}
+        </div>
+      )
+    }
+
+    <form method="POST" enctype="multipart/form-data" class="flex flex-col gap-2">
+      {error && <p class="text-sm text-red-600">{error}</p>}
+
+      <label for="avatar" class="text-sm font-medium text-club-navy">
+        Foto de perfil
+      </label>
+      <input
+        id="avatar"
+        name="avatar"
+        type="file"
+        accept="image/*"
+        required
+        class="text-sm text-club-navy file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-club-navy file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-club-white hover:file:bg-club-blue hover:file:text-club-navy"
+      />
+
+      <button
+        type="submit"
+        class="mt-1 w-fit rounded-lg bg-club-navy px-4 py-2 text-sm font-semibold text-club-white transition-colors hover:bg-club-blue hover:text-club-navy"
+      >
+        Subir foto
+      </button>
+    </form>
+  </div>
 
   <dl class="mt-6 divide-y divide-club-blue/20 rounded-xl border border-club-blue/30 bg-white shadow-sm">
     {

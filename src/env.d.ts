@@ -17,7 +17,7 @@ declare global {
     interface Locals {
       supabase: SupabaseClient;
       user: User | null;
-      perfil: { nombre: string; rol: 'admin' | 'editor' | 'viewer' } | null;
+      perfil: { nombre: string; rol: 'admin' | 'editor' | 'viewer'; avatar_url: string | null } | null;
     }
   }
 }
