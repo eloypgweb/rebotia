@@ -42,7 +42,15 @@ if (Astro.request.method === 'POST' && user) {
 
       if (!uploadResponse.ok) {
         const detalle = await uploadResponse.text();
-        error = `Error al subir la foto (${uploadResponse.status}): ${detalle}`;
+        let diagnostico = '';
+        try {
+          const payloadBase64 = session.access_token.split('.')[1];
+          const payload = JSON.parse(Buffer.from(payloadBase64, 'base64').toString('utf-8'));
+          diagnostico = ` | Token → role: ${payload.role}, sub: ${payload.sub}, aud: ${payload.aud}, exp: ${new Date(payload.exp * 1000).toISOString()}`;
+        } catch {
+          diagnostico = ' | No se pudo decodificar el token';
+        }
+        error = `Error al subir la foto (${uploadResponse.status}): ${detalle}${diagnostico}`;
       } else {
         const avatar_url = `${supabaseUrl}/storage/v1/object/public/avatars/${path}?v=${Date.now()}`;
 
