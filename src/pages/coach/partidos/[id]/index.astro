@@ -1,6 +1,7 @@
 ---
 import Layout from '../../../../layouts/Layout.astro';
 import EscudoEquipo from '../../../../components/EscudoEquipo.astro';
+import { formatearDia, formatearHora, HORARIO_POR_DEFINIR } from '../../../../lib/fechas';
 
 const { id } = Astro.params;
 
@@ -15,11 +16,6 @@ const { data: partido } = await Astro.locals.supabase
 if (!partido) {
   return Astro.redirect('/coach/partidos');
 }
-
-const formateador = new Intl.DateTimeFormat('es-ES', {
-  dateStyle: 'medium',
-  timeStyle: 'short',
-});
 
 const fases = [
   { href: `/coach/partidos/${id}/pre-partido`, titulo: 'Pre-Partido', descripcion: 'Convocatoria y notas previas.' },
@@ -60,7 +56,9 @@ const fases = [
   </div>
 
   <p class="mt-4 text-center text-sm text-club-navy/60">
-    {formateador.format(new Date(partido.fecha_inicio))}
+    {partido.fecha_partido
+      ? `${formatearDia(partido.fecha_partido)}${partido.hora_inicio ? ` · ${formatearHora(partido.hora_inicio)}` : ''}`
+      : HORARIO_POR_DEFINIR}
     {' · '}
     {partido.tipo === 'amistoso' ? 'Amistoso' : `Liga${partido.jornada != null ? ` · Jornada ${partido.jornada}` : ''}`}
     {' · '}

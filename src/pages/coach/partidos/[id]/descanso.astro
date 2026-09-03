@@ -1,0 +1,413 @@
+---
+import Layout from '../../../../layouts/Layout.astro';
+
+const { id } = Astro.params;
+const { user } = Astro.locals;
+
+let statsError: string | null = null;
+let comentarioError: string | null = null;
+
+const { data: partido } = await Astro.locals.supabase.from('partidos').select('*').eq('id', id).single();
+
+if (!partido) {
+  return Astro.redirect('/coach/partidos');
+}
+
+if (Astro.request.method === 'POST') {
+  const formData = await Astro.request.formData();
+  const intent = formData.get('intent')?.toString();
+
+  if (intent === 'estadisticas') {
+    const numero = (nombre: string) => Number(formData.get(nombre)?.toString() ?? '0') || 0;
+
+    const { data: convocadas } = await Astro.locals.supabase
+      .from('convocatorias')
+      .select('jugadora_id')
+      .eq('partido_id', id)
+      .eq('estado', 'convocada');
+
+    const filasJugadora = (convocadas ?? []).map(({ jugadora_id }) => {
+      const t2 = numero(`t2_${jugadora_id}`);
+      const t3 = numero(`t3_${jugadora_id}`);
+      const tlMetidos = numero(`tl_metidos_${jugadora_id}`);
+
+      return {
+        partido_id: id,
+        jugadora_id,
+        fase: 'primera_parte' as const,
+        minutos: numero(`minutos_${jugadora_id}`),
+        puntos: t2 * 2 + t3 * 3 + tlMetidos,
+        t2_metidos: t2,
+        t3_metidos: t3,
+        tl_metidos: tlMetidos,
+        tl_intentados: numero(`tl_intentados_${jugadora_id}`),
+        faltas: numero(`faltas_${jugadora_id}`),
+        autor_id: user?.id,
+      };
+    });
+
+    const t2Rival = numero('rival_t2');
+    const t3Rival = numero('rival_t3');
+    const tlMetidosRival = numero('rival_tl_metidos');
+
+    const filaEquipoPropio = {
+      partido_id: id,
+      fase: 'primera_parte' as const,
+      lado: 'propio' as const,
+      puntos: 0,
+      t2_metidos: 0,
+      t3_metidos: 0,
+      tl_metidos: 0,
+      tl_intentados: 0,
+      faltas: 0,
+      rebotes_ofensivos: numero('propio_rebotes_ofensivos'),
+      rebotes_defensivos: numero('propio_rebotes_defensivos'),
+      perdidas: numero('propio_perdidas'),
+      robos: numero('propio_robos'),
+      autor_id: user?.id,
+    };
+
+    const filaEquipoRival = {
+      partido_id: id,
+      fase: 'primera_parte' as const,
+      lado: 'rival' as const,
+      puntos: t2Rival * 2 + t3Rival * 3 + tlMetidosRival,
+      t2_metidos: t2Rival,
+      t3_metidos: t3Rival,
+      tl_metidos: tlMetidosRival,
+      tl_intentados: numero('rival_tl_intentados'),
+      faltas: numero('rival_faltas'),
+      rebotes_ofensivos: numero('rival_rebotes_ofensivos'),
+      rebotes_defensivos: numero('rival_rebotes_defensivos'),
+      perdidas: numero('rival_perdidas'),
+      robos: numero('rival_robos'),
+      autor_id: user?.id,
+    };
+
+    const { error: errorJugadoras } =
+      filasJugadora.length > 0
+        ? await Astro.locals.supabase
+            .from('estadisticas_jugadora')
+            .upsert(filasJugadora, { onConflict: 'partido_id,jugadora_id,fase' })
+        : { error: null };
+
+    const { error: errorEquipo } = await Astro.locals.supabase
+      .from('estadisticas_equipo')
+      .upsert([filaEquipoPropio, filaEquipoRival], { onConflict: 'partido_id,fase,lado' });
+
+    const { error: errorPartido } =
+      partido.fase_actual === 'pre_partido' || partido.fase_actual === 'primera_parte'
+        ? await Astro.locals.supabase.from('partidos').update({ fase_actual: 'descanso' }).eq('id', id)
+        : { error: null };
+
+    const error = errorJugadoras || errorEquipo || errorPartido;
+
+    if (error) {
+      statsError = error.message;
+    } else {
+      return Astro.redirect(`/coach/partidos/${id}/descanso`);
+    }
+  } else if (intent === 'comentario') {
+    const texto = formData.get('texto')?.toString().trim();
+
+    if (!texto) {
+      comentarioError = 'Escribe algo antes de guardar.';
+    } else {
+      const { error } = await Astro.locals.supabase
+        .from('comentarios')
+        .insert({ partido_id: id, fase: 'primera_parte', autor_id: user?.id, texto });
+
+      if (error) {
+        comentarioError = error.message;
+      } else {
+        return Astro.redirect(`/coach/partidos/${id}/descanso`);
+      }
+    }
+  }
+}
+
+const { data: convocatoria } = await Astro.locals.supabase
+  .from('convocatorias')
+  .select('jugadora_id, jugadora:jugadora_id(nombre, dorsal)')
+  .eq('partido_id', id)
+  .eq('estado', 'convocada');
+
+const jugadoras = (convocatoria ?? [])
+  .map((c) => ({ id: c.jugadora_id, nombre: c.jugadora?.nombre ?? '', dorsal: c.jugadora?.dorsal ?? null }))
+  .sort((a, b) => (a.dorsal ?? Infinity) - (b.dorsal ?? Infinity));
+
+const { data: statsExistentes } = await Astro.locals.supabase
+  .from('estadisticas_jugadora')
+  .select('*')
+  .eq('partido_id', id)
+  .eq('fase', 'primera_parte');
+
+const statsPorJugadora = new Map((statsExistentes ?? []).map((s) => [s.jugadora_id, s]));
+
+const { data: equipoExistente } = await Astro.locals.supabase
+  .from('estadisticas_equipo')
+  .select('*')
+  .eq('partido_id', id)
+  .eq('fase', 'primera_parte');
+
+const propioExistente = equipoExistente?.find((e) => e.lado === 'propio');
+const rivalExistente = equipoExistente?.find((e) => e.lado === 'rival');
+
+const { data: comentarios } = await Astro.locals.supabase
+  .from('comentarios')
+  .select('id, texto, created_at, autor:autor_id(nombre)')
+  .eq('partido_id', id)
+  .eq('fase', 'primera_parte')
+  .order('created_at', { ascending: false });
+
+const formateador = new Intl.DateTimeFormat('es-ES', { dateStyle: 'short', timeStyle: 'short' });
+
+const numInputClass =
+  'w-16 rounded-lg border border-club-blue/40 px-2 py-1 text-center text-club-navy outline-none focus:border-club-blue focus:ring-2 focus:ring-club-blue/30';
+const inputClass =
+  'rounded-lg border border-club-blue/40 px-3 py-2 text-club-navy outline-none focus:border-club-blue focus:ring-2 focus:ring-club-blue/30';
+---
+
+<Layout title="Al descanso — Rebotia">
+  <a
+    href={`/coach/partidos/${id}`}
+    class="text-sm font-medium text-club-navy/70 hover:text-club-navy hover:underline"
+  >
+    ← Volver al partido
+  </a>
+  <h1 class="mt-2 text-2xl font-bold text-club-navy">Al descanso</h1>
+
+  <p class="mt-1 text-sm text-club-navy/60">
+    Los números de aquí son el acumulado del partido hasta el descanso (no solo "lo de este tramo"): con esto y
+    los datos de Post-Partido se calculará luego la 2ª parte por diferencia.
+  </p>
+
+  <section class="mt-6">
+    <h2 class="text-lg font-semibold text-club-navy">Estadísticas de la 1ª parte</h2>
+
+    {
+      jugadoras.length === 0 ? (
+        <p class="mt-2 rounded-xl border border-club-blue/30 bg-white p-6 text-club-navy/70 shadow-sm">
+          No hay jugadoras convocadas.{' '}
+          <a href={`/coach/partidos/${id}/pre-partido`} class="font-medium text-club-navy hover:underline">
+            Revisa la convocatoria
+          </a>
+          .
+        </p>
+      ) : (
+        <form method="POST" class="mt-2 rounded-xl border border-club-blue/30 bg-white p-6 shadow-sm">
+          <input type="hidden" name="intent" value="estadisticas" />
+
+          {statsError && <p class="mb-4 text-sm text-red-600">{statsError}</p>}
+
+          <h3 class="text-sm font-semibold text-club-navy">Por jugadora</h3>
+          <div class="mt-2 overflow-x-auto">
+            <table class="w-full min-w-[720px] text-left text-sm">
+              <thead>
+                <tr class="border-b border-club-blue/20 text-club-navy/60">
+                  <th class="py-2 pr-2 font-medium">Jugadora</th>
+                  <th class="px-2 py-2 font-medium">Min</th>
+                  <th class="px-2 py-2 font-medium">T2</th>
+                  <th class="px-2 py-2 font-medium">T3</th>
+                  <th class="px-2 py-2 font-medium">TL metidos</th>
+                  <th class="px-2 py-2 font-medium">TL intentados</th>
+                  <th class="px-2 py-2 font-medium">Faltas</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-club-blue/10">
+                {jugadoras.map((jugadora) => {
+                  const actual = statsPorJugadora.get(jugadora.id);
+                  return (
+                    <tr>
+                      <td class="py-2 pr-2 font-medium text-club-navy">
+                        {jugadora.dorsal != null && <span class="text-club-navy/50">#{jugadora.dorsal} </span>}
+                        {jugadora.nombre}
+                      </td>
+                      <td class="px-2 py-2">
+                        <input
+                          type="number"
+                          min="0"
+                          name={`minutos_${jugadora.id}`}
+                          value={actual?.minutos ?? 0}
+                          class={numInputClass}
+                        />
+                      </td>
+                      <td class="px-2 py-2">
+                        <input
+                          type="number"
+                          min="0"
+                          name={`t2_${jugadora.id}`}
+                          value={actual?.t2_metidos ?? 0}
+                          class={numInputClass}
+                        />
+                      </td>
+                      <td class="px-2 py-2">
+                        <input
+                          type="number"
+                          min="0"
+                          name={`t3_${jugadora.id}`}
+                          value={actual?.t3_metidos ?? 0}
+                          class={numInputClass}
+                        />
+                      </td>
+                      <td class="px-2 py-2">
+                        <input
+                          type="number"
+                          min="0"
+                          name={`tl_metidos_${jugadora.id}`}
+                          value={actual?.tl_metidos ?? 0}
+                          class={numInputClass}
+                        />
+                      </td>
+                      <td class="px-2 py-2">
+                        <input
+                          type="number"
+                          min="0"
+                          name={`tl_intentados_${jugadora.id}`}
+                          value={actual?.tl_intentados ?? 0}
+                          class={numInputClass}
+                        />
+                      </td>
+                      <td class="px-2 py-2">
+                        <input
+                          type="number"
+                          min="0"
+                          name={`faltas_${jugadora.id}`}
+                          value={actual?.faltas ?? 0}
+                          class={numInputClass}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <div class="mt-6 grid gap-6 sm:grid-cols-2">
+            <div>
+              <h3 class="text-sm font-semibold text-club-navy">Nosotras</h3>
+              <div class="mt-2 flex flex-col gap-2">
+                <label class="flex items-center justify-between gap-2 text-sm text-club-navy">
+                  Rebotes ofensivos
+                  <input type="number" min="0" name="propio_rebotes_ofensivos" value={propioExistente?.rebotes_ofensivos ?? 0} class={numInputClass} />
+                </label>
+                <label class="flex items-center justify-between gap-2 text-sm text-club-navy">
+                  Rebotes defensivos
+                  <input type="number" min="0" name="propio_rebotes_defensivos" value={propioExistente?.rebotes_defensivos ?? 0} class={numInputClass} />
+                </label>
+                <label class="flex items-center justify-between gap-2 text-sm text-club-navy">
+                  Pérdidas
+                  <input type="number" min="0" name="propio_perdidas" value={propioExistente?.perdidas ?? 0} class={numInputClass} />
+                </label>
+                <label class="flex items-center justify-between gap-2 text-sm text-club-navy">
+                  Robos
+                  <input type="number" min="0" name="propio_robos" value={propioExistente?.robos ?? 0} class={numInputClass} />
+                </label>
+              </div>
+            </div>
+
+            <div>
+              <h3 class="text-sm font-semibold text-club-navy">Rival</h3>
+              <div class="mt-2 flex flex-col gap-2">
+                <label class="flex items-center justify-between gap-2 text-sm text-club-navy">
+                  T2 metidos
+                  <input type="number" min="0" name="rival_t2" value={rivalExistente?.t2_metidos ?? 0} class={numInputClass} />
+                </label>
+                <label class="flex items-center justify-between gap-2 text-sm text-club-navy">
+                  T3 metidos
+                  <input type="number" min="0" name="rival_t3" value={rivalExistente?.t3_metidos ?? 0} class={numInputClass} />
+                </label>
+                <label class="flex items-center justify-between gap-2 text-sm text-club-navy">
+                  TL metidos
+                  <input type="number" min="0" name="rival_tl_metidos" value={rivalExistente?.tl_metidos ?? 0} class={numInputClass} />
+                </label>
+                <label class="flex items-center justify-between gap-2 text-sm text-club-navy">
+                  TL intentados
+                  <input type="number" min="0" name="rival_tl_intentados" value={rivalExistente?.tl_intentados ?? 0} class={numInputClass} />
+                </label>
+                <label class="flex items-center justify-between gap-2 text-sm text-club-navy">
+                  Faltas
+                  <input type="number" min="0" name="rival_faltas" value={rivalExistente?.faltas ?? 0} class={numInputClass} />
+                </label>
+                <label class="flex items-center justify-between gap-2 text-sm text-club-navy">
+                  Rebotes ofensivos
+                  <input type="number" min="0" name="rival_rebotes_ofensivos" value={rivalExistente?.rebotes_ofensivos ?? 0} class={numInputClass} />
+                </label>
+                <label class="flex items-center justify-between gap-2 text-sm text-club-navy">
+                  Rebotes defensivos
+                  <input type="number" min="0" name="rival_rebotes_defensivos" value={rivalExistente?.rebotes_defensivos ?? 0} class={numInputClass} />
+                </label>
+                <label class="flex items-center justify-between gap-2 text-sm text-club-navy">
+                  Pérdidas
+                  <input type="number" min="0" name="rival_perdidas" value={rivalExistente?.perdidas ?? 0} class={numInputClass} />
+                </label>
+                <label class="flex items-center justify-between gap-2 text-sm text-club-navy">
+                  Robos
+                  <input type="number" min="0" name="rival_robos" value={rivalExistente?.robos ?? 0} class={numInputClass} />
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            class="mt-6 rounded-lg bg-club-navy px-4 py-2 text-sm font-semibold text-club-white transition-colors hover:bg-club-blue hover:text-club-navy"
+          >
+            Guardar estadísticas de la 1ª parte
+          </button>
+        </form>
+      )
+    }
+  </section>
+
+  <section class="mt-8">
+    <h2 class="text-lg font-semibold text-club-navy">Comentarios</h2>
+
+    <form method="POST" class="mt-2 rounded-xl border border-club-blue/30 bg-white p-6 shadow-sm">
+      <input type="hidden" name="intent" value="comentario" />
+
+      {comentarioError && <p class="mb-2 text-sm text-red-600">{comentarioError}</p>}
+
+      <label for="texto" class="text-sm font-medium text-club-navy">
+        Nueva anotación
+      </label>
+      <textarea
+        id="texto"
+        name="texto"
+        rows="3"
+        required
+        placeholder="Claves para la 2ª parte, ajustes, cosas a corregir..."
+        class={`mt-1 w-full ${inputClass}`}
+      />
+
+      <button
+        type="submit"
+        class="mt-3 rounded-lg bg-club-navy px-4 py-2 text-sm font-semibold text-club-white transition-colors hover:bg-club-blue hover:text-club-navy"
+      >
+        Añadir
+      </button>
+    </form>
+
+    <div class="mt-4 divide-y divide-club-blue/20 rounded-xl border border-club-blue/30 bg-white shadow-sm">
+      {comentarios?.length === 0 && <p class="p-6 text-club-navy/60">Todavía no hay comentarios.</p>}
+      {
+        comentarios?.map((comentario) => (
+          <div class="flex items-start justify-between gap-4 px-6 py-4">
+            <div>
+              <p class="text-xs font-medium text-club-navy/50">
+                {comentario.autor?.nombre ?? 'Alguien'} · {formateador.format(new Date(comentario.created_at))}
+              </p>
+              <p class="mt-1 whitespace-pre-wrap text-club-navy">{comentario.texto}</p>
+            </div>
+            <form method="POST" action={`/coach/partidos/${id}/comentarios/${comentario.id}/eliminar`}>
+              <button type="submit" class="shrink-0 text-sm font-medium text-red-600 hover:underline">
+                Eliminar
+              </button>
+            </form>
+          </div>
+        ))
+      }
+    </div>
+  </section>
+</Layout>

@@ -27,11 +27,12 @@ if (Astro.request.method === 'POST' && propio) {
   const tipo = formData.get('tipo')?.toString();
   const jornadaRaw = formData.get('jornada')?.toString().trim();
   const jornada = tipo === 'liga' && jornadaRaw ? Number(jornadaRaw) : null;
-  const fecha_inicio = formData.get('fecha_inicio')?.toString();
-  const fecha_convocatoria = formData.get('fecha_convocatoria')?.toString();
+  const fecha_partido = formData.get('fecha_partido')?.toString() || null;
+  const hora_inicio = formData.get('hora_inicio')?.toString() || null;
+  const hora_convocatoria = formData.get('hora_convocatoria')?.toString() || null;
 
-  if (!rivalId || !localia || !tipo || !fecha_inicio || !fecha_convocatoria) {
-    error = 'Rival, tipo, localía, hora de inicio y hora de convocatoria son obligatorios.';
+  if (!rivalId || !localia || !tipo) {
+    error = 'Rival, tipo y localía son obligatorios.';
   } else {
     const equipo_local_id = localia === 'casa' ? propio.id : rivalId;
     const equipo_visitante_id = localia === 'casa' ? rivalId : propio.id;
@@ -41,8 +42,9 @@ if (Astro.request.method === 'POST' && propio) {
       equipo_visitante_id,
       tipo,
       jornada,
-      fecha_inicio,
-      fecha_convocatoria,
+      fecha_partido,
+      hora_inicio,
+      hora_convocatoria,
       creado_por: Astro.locals.user?.id,
     });
 
@@ -130,29 +132,31 @@ const labelClass = 'text-sm font-medium text-club-navy';
           <input id="jornada" name="jornada" type="number" min="1" class={inputClass} />
         </div>
 
+        <p class="text-xs text-club-navy/50">
+          Puedes dejar el día y/o las horas en blanco si todavía no están confirmados: se mostrará como
+          "Horario aún por definir" y podrás rellenarlo más tarde editándolo.
+        </p>
+
         <div class="flex flex-col gap-1">
-          <label for="dia_input" class={labelClass}>
+          <label for="fecha_partido" class={labelClass}>
             Día de partido
           </label>
-          <input id="dia_input" type="date" required class={inputClass} />
+          <input id="fecha_partido" name="fecha_partido" type="date" class={inputClass} />
         </div>
 
         <div class="flex flex-col gap-1">
-          <label for="inicio_input" class={labelClass}>
+          <label for="hora_inicio" class={labelClass}>
             Hora de inicio
           </label>
-          <input id="inicio_input" type="time" required class={inputClass} />
+          <input id="hora_inicio" name="hora_inicio" type="time" class={inputClass} />
         </div>
 
         <div class="flex flex-col gap-1">
-          <label for="convocatoria_input" class={labelClass}>
+          <label for="hora_convocatoria" class={labelClass}>
             Hora de convocatoria
           </label>
-          <input id="convocatoria_input" type="time" required class={inputClass} />
+          <input id="hora_convocatoria" name="hora_convocatoria" type="time" class={inputClass} />
         </div>
-
-        <input id="inicio_hidden" name="fecha_inicio" type="hidden" />
-        <input id="convocatoria_hidden" name="fecha_convocatoria" type="hidden" />
 
         <div class="mt-2 flex gap-4">
           <button
@@ -170,12 +174,8 @@ const labelClass = 'text-sm font-medium text-club-navy';
   }
 
   <script>
-    const form = document.getElementById('partido-form') as HTMLFormElement | null;
-    const diaInput = document.getElementById('dia_input') as HTMLInputElement | null;
-    const inicioInput = document.getElementById('inicio_input') as HTMLInputElement | null;
-    const inicioHidden = document.getElementById('inicio_hidden') as HTMLInputElement | null;
-    const convInput = document.getElementById('convocatoria_input') as HTMLInputElement | null;
-    const convHidden = document.getElementById('convocatoria_hidden') as HTMLInputElement | null;
+    const inicioInput = document.getElementById('hora_inicio') as HTMLInputElement | null;
+    const convInput = document.getElementById('hora_convocatoria') as HTMLInputElement | null;
     const tipoSelect = document.getElementById('tipo') as HTMLSelectElement | null;
     const jornadaWrapper = document.getElementById('jornada_wrapper') as HTMLDivElement | null;
     const jornadaInput = document.getElementById('jornada') as HTMLInputElement | null;
@@ -191,9 +191,8 @@ const labelClass = 'text-sm font-medium text-club-navy';
       actualizarJornada();
     }
 
-    if (form && diaInput && inicioInput && inicioHidden && convInput && convHidden) {
+    if (inicioInput && convInput) {
       const pad = (n: number) => String(n).padStart(2, '0');
-
       const toTime = (date: Date) => `${pad(date.getHours())}:${pad(date.getMinutes())}`;
 
       let convocatoriaTocada = false;
@@ -207,15 +206,6 @@ const labelClass = 'text-sm font-medium text-club-navy';
         const inicio = new Date(2000, 0, 1, horas, minutos);
         const convocatoria = new Date(inicio.getTime() - 60 * 60 * 1000);
         convInput.value = toTime(convocatoria);
-      });
-
-      form.addEventListener('submit', () => {
-        if (diaInput.value && inicioInput.value) {
-          inicioHidden.value = new Date(`${diaInput.value}T${inicioInput.value}`).toISOString();
-        }
-        if (diaInput.value && convInput.value) {
-          convHidden.value = new Date(`${diaInput.value}T${convInput.value}`).toISOString();
-        }
       });
     }
   </script>

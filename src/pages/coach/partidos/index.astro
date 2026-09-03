@@ -1,6 +1,7 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
 import EscudoEquipo from '../../../components/EscudoEquipo.astro';
+import { formatearDia, formatearHora, HORARIO_POR_DEFINIR } from '../../../lib/fechas';
 
 const esAdmin = Astro.locals.perfil?.rol === 'admin';
 
@@ -9,14 +10,9 @@ const { data: partidos, error } = await Astro.locals.supabase
   .select(
     '*, local:equipo_local_id(nombre, escudo_url), visitante:equipo_visitante_id(nombre, escudo_url)',
   )
-  .order('fecha_inicio', { ascending: false });
+  .order('fecha_partido', { ascending: false, nullsFirst: false });
 
 const errorEliminar = Astro.url.searchParams.get('error');
-
-const formateador = new Intl.DateTimeFormat('es-ES', {
-  dateStyle: 'medium',
-  timeStyle: 'short',
-});
 ---
 
 <Layout title="Partidos — Rebotia">
@@ -53,7 +49,9 @@ const formateador = new Intl.DateTimeFormat('es-ES', {
                 {partido.local?.nombre} <span class="text-club-navy/40">vs</span> {partido.visitante?.nombre}
               </p>
               <p class="text-sm text-club-navy/60">
-                {formateador.format(new Date(partido.fecha_inicio))}
+                {partido.fecha_partido
+                  ? `${formatearDia(partido.fecha_partido)}${partido.hora_inicio ? ` · ${formatearHora(partido.hora_inicio)}` : ''}`
+                  : HORARIO_POR_DEFINIR}
                 {' · '}
                 {partido.tipo === 'amistoso' ? 'Amistoso' : `Liga${partido.jornada != null ? ` · Jornada ${partido.jornada}` : ''}`}
                 {' · '}

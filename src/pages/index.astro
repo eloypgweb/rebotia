@@ -1,6 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import EscudoEquipo from '../components/EscudoEquipo.astro';
+import { formatearDia, formatearHora, HORARIO_POR_DEFINIR } from '../lib/fechas';
 
 const rol = Astro.locals.perfil?.rol;
 const puedeVerCoach = rol === 'admin' || rol === 'editor';
@@ -12,7 +13,7 @@ const { data: proximo } = await Astro.locals.supabase
   .from('partidos')
   .select(equiposSelect)
   .neq('fase_actual', 'finalizado')
-  .order('fecha_inicio', { ascending: true })
+  .order('fecha_partido', { ascending: true, nullsFirst: false })
   .limit(1)
   .maybeSingle();
 
@@ -20,12 +21,10 @@ const { data: ultimo } = await Astro.locals.supabase
   .from('partidos')
   .select(equiposSelect)
   .eq('fase_actual', 'finalizado')
-  .order('fecha_inicio', { ascending: false })
+  .order('fecha_partido', { ascending: false, nullsFirst: false })
   .limit(1)
   .maybeSingle();
 
-const formateadorFechaSola = new Intl.DateTimeFormat('es-ES', { dateStyle: 'full' });
-const formateadorHora = new Intl.DateTimeFormat('es-ES', { timeStyle: 'short' });
 ---
 
 <Layout title="Rebotia">
@@ -46,7 +45,7 @@ const formateadorHora = new Intl.DateTimeFormat('es-ES', { timeStyle: 'short' })
         <h2 class="text-lg font-semibold text-club-navy">Próximo partido</h2>
         <div class="mt-2 rounded-xl border border-club-blue/30 bg-white p-6 shadow-sm">
           <p class="text-center text-base font-bold text-club-navy">
-            {formateadorFechaSola.format(new Date(proximo.fecha_inicio))}
+            {proximo.fecha_partido ? formatearDia(proximo.fecha_partido, 'completo') : HORARIO_POR_DEFINIR}
           </p>
 
           <div class="mt-4 flex flex-row items-center">
@@ -73,8 +72,10 @@ const formateadorHora = new Intl.DateTimeFormat('es-ES', { timeStyle: 'short' })
                 ? 'Amistoso'
                 : `Liga${proximo.jornada != null ? ` · Jornada ${proximo.jornada}` : ''}`}
             </p>
-            <p class="font-bold text-club-navy">📋 Convocatoria: {formateadorHora.format(new Date(proximo.fecha_convocatoria))}</p>
-            <p>🏀 Inicio del partido: {formateadorHora.format(new Date(proximo.fecha_inicio))}</p>
+            {proximo.hora_convocatoria && (
+              <p class="font-bold text-club-navy">📋 Convocatoria: {formatearHora(proximo.hora_convocatoria)}</p>
+            )}
+            {proximo.hora_inicio && <p>🏀 Inicio del partido: {formatearHora(proximo.hora_inicio)}</p>}
           </div>
         </div>
       </section>
