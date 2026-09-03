@@ -1,0 +1,83 @@
+---
+import Layout from '../../../../layouts/Layout.astro';
+import EscudoEquipo from '../../../../components/EscudoEquipo.astro';
+
+const { id } = Astro.params;
+
+const { data: partido } = await Astro.locals.supabase
+  .from('partidos')
+  .select(
+    '*, local:equipo_local_id(nombre, escudo_url), visitante:equipo_visitante_id(nombre, escudo_url)',
+  )
+  .eq('id', id)
+  .single();
+
+if (!partido) {
+  return Astro.redirect('/coach/partidos');
+}
+
+const formateador = new Intl.DateTimeFormat('es-ES', {
+  dateStyle: 'medium',
+  timeStyle: 'short',
+});
+
+const fases = [
+  { href: `/coach/partidos/${id}/pre-partido`, titulo: 'Pre-Partido', descripcion: 'Convocatoria y notas previas.' },
+  {
+    href: `/coach/partidos/${id}/descanso`,
+    titulo: 'Al descanso',
+    descripcion: 'Estadísticas de la 1ª parte y comentarios.',
+  },
+  {
+    href: `/coach/partidos/${id}/post-partido`,
+    titulo: 'Post-Partido',
+    descripcion: 'Estadísticas completas, resultado final y valoración.',
+  },
+];
+---
+
+<Layout title={`${partido.local?.nombre} vs ${partido.visitante?.nombre} — Rebotia`}>
+  <a href="/coach/partidos" class="text-sm font-medium text-club-navy/70 hover:text-club-navy hover:underline">
+    ← Volver a Partidos
+  </a>
+
+  <div class="mt-2 flex flex-row rounded-xl border border-club-blue/30 bg-white p-6 shadow-sm">
+    <div class="flex basis-[48%] flex-col items-center justify-center gap-2">
+      <EscudoEquipo nombre={partido.local?.nombre ?? ''} escudoUrl={partido.local?.escudo_url} size="h-12 w-12" />
+      <p class="text-center text-sm font-medium text-club-navy">{partido.local?.nombre}</p>
+    </div>
+    <div class="flex basis-[4%] items-center justify-center">
+      <p class="text-xl font-bold text-club-navy/30">vs</p>
+    </div>
+    <div class="flex basis-[48%] flex-col items-center justify-center gap-2">
+      <EscudoEquipo
+        nombre={partido.visitante?.nombre ?? ''}
+        escudoUrl={partido.visitante?.escudo_url}
+        size="h-12 w-12"
+      />
+      <p class="text-center text-sm font-medium text-club-navy">{partido.visitante?.nombre}</p>
+    </div>
+  </div>
+
+  <p class="mt-4 text-center text-sm text-club-navy/60">
+    {formateador.format(new Date(partido.fecha_inicio))}
+    {' · '}
+    {partido.tipo === 'amistoso' ? 'Amistoso' : `Liga${partido.jornada != null ? ` · Jornada ${partido.jornada}` : ''}`}
+    {' · '}
+    Fase: {partido.fase_actual}
+  </p>
+
+  <div class="mt-6 grid gap-4 sm:grid-cols-3">
+    {
+      fases.map((fase) => (
+        <a
+          href={fase.href}
+          class="rounded-xl border border-club-blue/30 bg-white p-6 shadow-sm transition-colors hover:border-club-blue hover:bg-club-blue/10"
+        >
+          <h2 class="text-lg font-semibold text-club-navy">{fase.titulo}</h2>
+          <p class="mt-1 text-sm text-club-navy/70">{fase.descripcion}</p>
+        </a>
+      ))
+    }
+  </div>
+</Layout>

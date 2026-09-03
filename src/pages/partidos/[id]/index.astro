@@ -1,0 +1,242 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import EscudoEquipo from '../../../components/EscudoEquipo.astro';
+
+const { id } = Astro.params;
+
+const { data: partido } = await Astro.locals.supabase
+  .from('partidos')
+  .select(
+    '*, local:equipo_local_id(nombre, escudo_url, es_propio), visitante:equipo_visitante_id(nombre, escudo_url, es_propio)',
+  )
+  .eq('id', id)
+  .single();
+
+if (!partido) {
+  return Astro.redirect('/partidos');
+}
+
+const formateadorFecha = new Intl.DateTimeFormat('es-ES', { dateStyle: 'medium', timeStyle: 'short' });
+
+const jugado = partido.fase_actual === 'finalizado';
+const propioEsLocal = partido.local?.es_propio === true;
+
+let statsJugadoras: Array<{
+  minutos: number;
+  puntos: number;
+  t2_metidos: number;
+  t3_metidos: number;
+  tl_metidos: number;
+  tl_intentados: number;
+  faltas: number;
+  jugadora: { nombre: string; dorsal: number | null } | null;
+}> = [];
+let propioEquipoStats: {
+  rebotes_ofensivos: number;
+  rebotes_defensivos: number;
+  perdidas: number;
+  robos: number;
+} | null = null;
+let rivalEquipoStats: {
+  puntos: number;
+  t2_metidos: number;
+  t3_metidos: number;
+  tl_metidos: number;
+  tl_intentados: number;
+  faltas: number;
+  rebotes_ofensivos: number;
+  rebotes_defensivos: number;
+  perdidas: number;
+  robos: number;
+} | null = null;
+let propioTotales = { puntos: 0, t2: 0, t3: 0, tlMetidos: 0, tlIntentados: 0, faltas: 0 };
+
+if (jugado) {
+  const { data: statsJugadorasData } = await Astro.locals.supabase
+    .from('estadisticas_jugadora')
+    .select(
+      'minutos, puntos, t2_metidos, t3_metidos, tl_metidos, tl_intentados, faltas, jugadora:jugadora_id(nombre, dorsal)',
+    )
+    .eq('partido_id', id)
+    .eq('fase', 'final')
+    .order('puntos', { ascending: false });
+
+  statsJugadoras = statsJugadorasData ?? [];
+
+  propioTotales = statsJugadoras.reduce(
+    (acc, j) => ({
+      puntos: acc.puntos + j.puntos,
+      t2: acc.t2 + j.t2_metidos,
+      t3: acc.t3 + j.t3_metidos,
+      tlMetidos: acc.tlMetidos + j.tl_metidos,
+      tlIntentados: acc.tlIntentados + j.tl_intentados,
+      faltas: acc.faltas + j.faltas,
+    }),
+    { puntos: 0, t2: 0, t3: 0, tlMetidos: 0, tlIntentados: 0, faltas: 0 },
+  );
+
+  const { data: statsEquipo } = await Astro.locals.supabase
+    .from('estadisticas_equipo')
+    .select('*')
+    .eq('partido_id', id)
+    .eq('fase', 'final');
+
+  propioEquipoStats = statsEquipo?.find((s) => s.lado === 'propio') ?? null;
+  rivalEquipoStats = statsEquipo?.find((s) => s.lado === 'rival') ?? null;
+}
+---
+
+<Layout title={`${partido.local?.nombre} vs ${partido.visitante?.nombre} — Rebotia`}>
+  <a href="/partidos" class="text-sm font-medium text-club-navy/70 hover:text-club-navy hover:underline">
+    ← Volver al calendario
+  </a>
+
+  <div class="mt-2 flex flex-row rounded-xl border border-club-blue/30 bg-white p-6 shadow-sm">
+    <div class="flex basis-[48%] flex-col items-center justify-center gap-2">
+      <EscudoEquipo nombre={partido.local?.nombre ?? ''} escudoUrl={partido.local?.escudo_url} size="h-12 w-12" />
+      <p class="text-center text-sm font-medium text-club-navy">{partido.local?.nombre}</p>
+    </div>
+    <div class="flex basis-[4%] items-center justify-center">
+      <p class="text-xl font-bold text-club-navy/30">
+        {jugado ? `${partido.goles_local}-${partido.goles_visitante}` : 'vs'}
+      </p>
+    </div>
+    <div class="flex basis-[48%] flex-col items-center justify-center gap-2">
+      <EscudoEquipo
+        nombre={partido.visitante?.nombre ?? ''}
+        escudoUrl={partido.visitante?.escudo_url}
+        size="h-12 w-12"
+      />
+      <p class="text-center text-sm font-medium text-club-navy">{partido.visitante?.nombre}</p>
+    </div>
+  </div>
+
+  <p class="mt-4 text-center text-sm text-club-navy/60">
+    {formateadorFecha.format(new Date(partido.fecha_inicio))}
+    {' · '}
+    {partido.tipo === 'amistoso' ? 'Amistoso' : `Liga${partido.jornada != null ? ` · Jornada ${partido.jornada}` : ''}`}
+  </p>
+
+  {
+    !jugado ? (
+      <p class="mt-6 rounded-xl border border-club-blue/30 bg-white p-6 text-center text-club-navy/70 shadow-sm">
+        Este partido todavía no se ha jugado.
+      </p>
+    ) : (
+      <>
+        <section class="mt-8">
+          <h2 class="text-lg font-semibold text-club-navy">Estadísticas por jugadora</h2>
+
+          {statsJugadoras.length === 0 ? (
+            <p class="mt-2 rounded-xl border border-club-blue/30 bg-white p-6 text-club-navy/70 shadow-sm">
+              Todavía no hay estadísticas registradas.
+            </p>
+          ) : (
+            <div class="mt-2 overflow-x-auto rounded-xl border border-club-blue/30 bg-white shadow-sm">
+              <table class="w-full min-w-[640px] text-left text-sm">
+                <thead>
+                  <tr class="border-b border-club-blue/20 text-club-navy/60">
+                    <th class="px-4 py-3 font-medium">Jugadora</th>
+                    <th class="px-4 py-3 font-medium">Min</th>
+                    <th class="px-4 py-3 font-medium">Pts</th>
+                    <th class="px-4 py-3 font-medium">T2</th>
+                    <th class="px-4 py-3 font-medium">T3</th>
+                    <th class="px-4 py-3 font-medium">TL</th>
+                    <th class="px-4 py-3 font-medium">Faltas</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-club-blue/10">
+                  {statsJugadoras.map((j) => (
+                    <tr class="text-club-navy">
+                      <td class="px-4 py-3 font-medium">
+                        {j.jugadora?.dorsal != null && (
+                          <span class="text-club-navy/50">#{j.jugadora.dorsal} </span>
+                        )}
+                        {j.jugadora?.nombre}
+                      </td>
+                      <td class="px-4 py-3">{j.minutos}</td>
+                      <td class="px-4 py-3">{j.puntos}</td>
+                      <td class="px-4 py-3">{j.t2_metidos}</td>
+                      <td class="px-4 py-3">{j.t3_metidos}</td>
+                      <td class="px-4 py-3">
+                        {j.tl_metidos}/{j.tl_intentados}
+                      </td>
+                      <td class="px-4 py-3">{j.faltas}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
+        <section class="mt-8">
+          <h2 class="text-lg font-semibold text-club-navy">Equipo</h2>
+
+          <div class="mt-2 overflow-x-auto rounded-xl border border-club-blue/30 bg-white shadow-sm">
+            <table class="w-full min-w-[480px] text-left text-sm">
+              <thead>
+                <tr class="border-b border-club-blue/20 text-club-navy/60">
+                  <th class="px-4 py-3 font-medium"> </th>
+                  <th class="px-4 py-3 font-medium">Nosotras</th>
+                  <th class="px-4 py-3 font-medium">{propioEsLocal ? partido.visitante?.nombre : partido.local?.nombre}</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-club-blue/10 text-club-navy">
+                <tr>
+                  <td class="px-4 py-3 text-club-navy/60">Puntos</td>
+                  <td class="px-4 py-3">{propioTotales.puntos}</td>
+                  <td class="px-4 py-3">{rivalEquipoStats?.puntos ?? 0}</td>
+                </tr>
+                <tr>
+                  <td class="px-4 py-3 text-club-navy/60">T2 metidos</td>
+                  <td class="px-4 py-3">{propioTotales.t2}</td>
+                  <td class="px-4 py-3">{rivalEquipoStats?.t2_metidos ?? 0}</td>
+                </tr>
+                <tr>
+                  <td class="px-4 py-3 text-club-navy/60">T3 metidos</td>
+                  <td class="px-4 py-3">{propioTotales.t3}</td>
+                  <td class="px-4 py-3">{rivalEquipoStats?.t3_metidos ?? 0}</td>
+                </tr>
+                <tr>
+                  <td class="px-4 py-3 text-club-navy/60">Tiros libres</td>
+                  <td class="px-4 py-3">
+                    {propioTotales.tlMetidos}/{propioTotales.tlIntentados}
+                  </td>
+                  <td class="px-4 py-3">
+                    {rivalEquipoStats?.tl_metidos ?? 0}/{rivalEquipoStats?.tl_intentados ?? 0}
+                  </td>
+                </tr>
+                <tr>
+                  <td class="px-4 py-3 text-club-navy/60">Faltas</td>
+                  <td class="px-4 py-3">{propioTotales.faltas}</td>
+                  <td class="px-4 py-3">{rivalEquipoStats?.faltas ?? 0}</td>
+                </tr>
+                <tr>
+                  <td class="px-4 py-3 text-club-navy/60">Rebotes ofensivos</td>
+                  <td class="px-4 py-3">{propioEquipoStats?.rebotes_ofensivos ?? 0}</td>
+                  <td class="px-4 py-3">{rivalEquipoStats?.rebotes_ofensivos ?? 0}</td>
+                </tr>
+                <tr>
+                  <td class="px-4 py-3 text-club-navy/60">Rebotes defensivos</td>
+                  <td class="px-4 py-3">{propioEquipoStats?.rebotes_defensivos ?? 0}</td>
+                  <td class="px-4 py-3">{rivalEquipoStats?.rebotes_defensivos ?? 0}</td>
+                </tr>
+                <tr>
+                  <td class="px-4 py-3 text-club-navy/60">Pérdidas</td>
+                  <td class="px-4 py-3">{propioEquipoStats?.perdidas ?? 0}</td>
+                  <td class="px-4 py-3">{rivalEquipoStats?.perdidas ?? 0}</td>
+                </tr>
+                <tr>
+                  <td class="px-4 py-3 text-club-navy/60">Robos</td>
+                  <td class="px-4 py-3">{propioEquipoStats?.robos ?? 0}</td>
+                  <td class="px-4 py-3">{rivalEquipoStats?.robos ?? 0}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </>
+    )
+  }
+</Layout>

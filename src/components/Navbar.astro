@@ -15,7 +15,7 @@ const mobileLinkClass =
 
     <div class="hidden items-center gap-x-5 text-sm font-medium sm:flex">
       <a href="/" class={linkClass}>Inicio</a>
-      <a href="/partidos" class={linkClass}>Partidos jugados</a>
+      <a href="/partidos" class={linkClass}>Calendario de partidos</a>
       {puedeVerCoach && <a href="/coach" class={linkClass}>Coach</a>}
       {
         user ? (
@@ -59,7 +59,7 @@ const mobileLinkClass =
 
   <div id="nav-menu" class="hidden flex-col gap-1 pt-3 sm:hidden">
     <a href="/" class={mobileLinkClass}>Inicio</a>
-    <a href="/partidos" class={mobileLinkClass}>Partidos jugados</a>
+    <a href="/partidos" class={mobileLinkClass}>Calendario de partidos</a>
     {puedeVerCoach && <a href="/coach" class={mobileLinkClass}>Coach</a>}
     {
       user ? (

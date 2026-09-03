@@ -1,6 +1,10 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
 
+if (Astro.locals.perfil?.rol !== 'admin') {
+  return Astro.redirect('/coach/jugadoras');
+}
+
 let error: string | null = null;
 
 if (Astro.request.method === 'POST') {

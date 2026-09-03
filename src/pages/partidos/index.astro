@@ -1,11 +1,122 @@
 ---
 import Layout from '../../layouts/Layout.astro';
+import EscudoEquipo from '../../components/EscudoEquipo.astro';
+
+const { data: partidos, error } = await Astro.locals.supabase
+  .from('partidos')
+  .select(
+    '*, local:equipo_local_id(nombre, escudo_url), visitante:equipo_visitante_id(nombre, escudo_url)',
+  )
+  .order('fecha_inicio', { ascending: true });
+
+const jugados = (partidos ?? []).filter((p) => p.fase_actual === 'finalizado').reverse();
+const proximos = (partidos ?? []).filter((p) => p.fase_actual !== 'finalizado');
+
+const formateadorFecha = new Intl.DateTimeFormat('es-ES', { dateStyle: 'medium' });
+const formateadorHora = new Intl.DateTimeFormat('es-ES', { timeStyle: 'short' });
 ---
 
-<Layout title="Partidos jugados — Rebotia">
-  <h1 class="text-2xl font-bold text-club-navy">Partidos jugados</h1>
+<Layout title="Calendario de partidos — Rebotia">
+  <h1 class="text-2xl font-bold text-club-navy">Calendario de partidos</h1>
 
-  <div class="mt-6 rounded-xl border border-club-blue/30 bg-white p-6 text-club-navy/70 shadow-sm">
-    Próximamente: listado de partidos.
-  </div>
+  {error && <p class="mt-4 text-sm text-red-600">Error: {error.message}</p>}
+
+  <section class="mt-6">
+    <h2 class="text-lg font-semibold text-club-navy">Próximos partidos</h2>
+
+    <div class="mt-2 flex flex-col gap-3">
+      {proximos.length === 0 && (
+        <p class="rounded-xl border border-club-blue/30 bg-white p-6 text-club-navy/60 shadow-sm">
+          No hay partidos programados.
+        </p>
+      )}
+      {
+        proximos.map((partido) => (
+          <div class="rounded-xl border border-club-blue/30 bg-white p-4 shadow-sm sm:p-6">
+            <p class="text-center text-xs font-medium text-club-navy/50">
+              {formateadorFecha.format(new Date(partido.fecha_inicio))}
+              {' · '}
+              {partido.tipo === 'amistoso'
+                ? 'Amistoso'
+                : `Liga${partido.jornada != null ? ` · Jornada ${partido.jornada}` : ''}`}
+            </p>
+
+            <div class="mt-3 flex flex-row items-center">
+              <div class="flex basis-[45%] flex-col items-center gap-1.5">
+                <EscudoEquipo nombre={partido.local?.nombre ?? ''} escudoUrl={partido.local?.escudo_url} size="h-10 w-10 sm:h-12 sm:w-12" />
+                <p class="text-center text-sm font-medium text-club-navy">{partido.local?.nombre}</p>
+              </div>
+              <div class="flex basis-[10%] items-center justify-center">
+                <p class="text-sm font-bold text-club-navy/30">vs</p>
+              </div>
+              <div class="flex basis-[45%] flex-col items-center gap-1.5">
+                <EscudoEquipo
+                  nombre={partido.visitante?.nombre ?? ''}
+                  escudoUrl={partido.visitante?.escudo_url}
+                  size="h-10 w-10 sm:h-12 sm:w-12"
+                />
+                <p class="text-center text-sm font-medium text-club-navy">{partido.visitante?.nombre}</p>
+              </div>
+            </div>
+
+            <p class="mt-3 text-center text-xs text-club-navy/50">
+              🏀 Inicio: {formateadorHora.format(new Date(partido.fecha_inicio))}
+            </p>
+          </div>
+        ))
+      }
+    </div>
+  </section>
+
+  <section class="mt-8">
+    <h2 class="text-lg font-semibold text-club-navy">Partidos jugados</h2>
+
+    <div class="mt-2 flex flex-col gap-3">
+      {jugados.length === 0 && (
+        <p class="rounded-xl border border-club-blue/30 bg-white p-6 text-club-navy/60 shadow-sm">
+          Todavía no se ha jugado ningún partido.
+        </p>
+      )}
+      {
+        jugados.map((partido) => (
+          <a
+            href={`/partidos/${partido.id}`}
+            class="rounded-xl border border-club-blue/30 bg-white p-4 shadow-sm transition-colors hover:border-club-blue hover:bg-club-blue/10 sm:p-6"
+          >
+            <p class="text-center text-xs font-medium text-club-navy/50">
+              {formateadorFecha.format(new Date(partido.fecha_inicio))}
+              {' · '}
+              {partido.tipo === 'amistoso'
+                ? 'Amistoso'
+                : `Liga${partido.jornada != null ? ` · Jornada ${partido.jornada}` : ''}`}
+            </p>
+
+            <div class="mt-3 flex flex-row items-center">
+              <div class="flex basis-[42%] flex-col items-center gap-1.5">
+                <EscudoEquipo nombre={partido.local?.nombre ?? ''} escudoUrl={partido.local?.escudo_url} size="h-10 w-10 sm:h-12 sm:w-12" />
+                <p class="text-center text-sm font-medium text-club-navy">{partido.local?.nombre}</p>
+              </div>
+              <div class="flex basis-[16%] items-center justify-center">
+                <p class="text-lg font-bold text-club-navy">
+                  {partido.goles_local}-{partido.goles_visitante}
+                </p>
+              </div>
+              <div class="flex basis-[42%] flex-col items-center gap-1.5">
+                <EscudoEquipo
+                  nombre={partido.visitante?.nombre ?? ''}
+                  escudoUrl={partido.visitante?.escudo_url}
+                  size="h-10 w-10 sm:h-12 sm:w-12"
+                />
+                <p class="text-center text-sm font-medium text-club-navy">{partido.visitante?.nombre}</p>
+              </div>
+            </div>
+
+            <p class="mt-3 text-center text-sm font-medium text-club-navy hover:underline">
+              Ver estadísticas del partido →
+            </p>
+          </a>
+        ))
+      }
+    </div>
+  </section>
 </Layout>

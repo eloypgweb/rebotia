@@ -30,6 +30,21 @@ as $$
   );
 $$;
 
+create or replace function public.es_admin()
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists (
+    select 1
+    from public.perfiles
+    where id = auth.uid()
+      and rol = 'admin'
+  );
+$$;
+
 alter table public.perfiles enable row level security;
 
 create policy "perfiles_select_authenticated"
@@ -57,21 +72,21 @@ create table public.equipos (
 
 alter table public.equipos enable row level security;
 
-create policy "equipos_select_authenticated"
-  on public.equipos for select to authenticated using (true);
+create policy "equipos_select_public"
+  on public.equipos for select to public using (true);
 
-create policy "equipos_insert_admin_editor"
+create policy "equipos_insert_admin"
   on public.equipos for insert to authenticated
-  with check (public.es_admin_o_editor());
+  with check (public.es_admin());
 
-create policy "equipos_update_admin_editor"
+create policy "equipos_update_admin"
   on public.equipos for update to authenticated
-  using (public.es_admin_o_editor())
-  with check (public.es_admin_o_editor());
+  using (public.es_admin())
+  with check (public.es_admin());
 
-create policy "equipos_delete_admin_editor"
+create policy "equipos_delete_admin"
   on public.equipos for delete to authenticated
-  using (public.es_admin_o_editor());
+  using (public.es_admin());
 
 -- =========================================================
 -- 3. jugadoras
@@ -88,21 +103,21 @@ create index jugadoras_equipo_id_idx on public.jugadoras (equipo_id);
 
 alter table public.jugadoras enable row level security;
 
-create policy "jugadoras_select_authenticated"
-  on public.jugadoras for select to authenticated using (true);
+create policy "jugadoras_select_public"
+  on public.jugadoras for select to public using (true);
 
-create policy "jugadoras_insert_admin_editor"
+create policy "jugadoras_insert_admin"
   on public.jugadoras for insert to authenticated
-  with check (public.es_admin_o_editor());
+  with check (public.es_admin());
 
-create policy "jugadoras_update_admin_editor"
+create policy "jugadoras_update_admin"
   on public.jugadoras for update to authenticated
-  using (public.es_admin_o_editor())
-  with check (public.es_admin_o_editor());
+  using (public.es_admin())
+  with check (public.es_admin());
 
-create policy "jugadoras_delete_admin_editor"
+create policy "jugadoras_delete_admin"
   on public.jugadoras for delete to authenticated
-  using (public.es_admin_o_editor());
+  using (public.es_admin());
 
 -- =========================================================
 -- 4. partidos
@@ -136,17 +151,21 @@ create index partidos_equipo_visitante_id_idx on public.partidos (equipo_visitan
 
 alter table public.partidos enable row level security;
 
-create policy "partidos_select_authenticated"
-  on public.partidos for select to authenticated using (true);
+create policy "partidos_select_public"
+  on public.partidos for select to public using (true);
 
-create policy "partidos_insert_admin_editor"
+create policy "partidos_insert_admin"
   on public.partidos for insert to authenticated
-  with check (public.es_admin_o_editor());
+  with check (public.es_admin());
 
-create policy "partidos_update_admin_editor"
+create policy "partidos_update_admin"
   on public.partidos for update to authenticated
-  using (public.es_admin_o_editor())
-  with check (public.es_admin_o_editor());
+  using (public.es_admin())
+  with check (public.es_admin());
+
+create policy "partidos_delete_admin"
+  on public.partidos for delete to authenticated
+  using (public.es_admin());
 
 -- Un partido siempre debe enfrentar a nuestro equipo (es_propio) contra un
 -- rival: nunca dos propios ni dos rivales entre sí.
@@ -177,11 +196,14 @@ create trigger validar_equipos_partido
 -- =========================================================
 -- 5. convocatorias
 -- =========================================================
+create type public.estado_convocatoria as enum ('convocada', 'lesionada', 'ausente');
+
 create table public.convocatorias (
   partido_id uuid not null references public.partidos (id) on delete cascade,
   jugadora_id uuid not null references public.jugadoras (id) on delete cascade,
   titular boolean not null default false,
   minutos_jugados integer not null default 0,
+  estado public.estado_convocatoria not null default 'convocada',
   primary key (partido_id, jugadora_id)
 );
 
@@ -204,7 +226,7 @@ create policy "convocatorias_update_admin_editor"
 -- =========================================================
 -- 6. estadisticas_jugadora
 -- =========================================================
-create type public.fase_juego as enum ('primera_parte', 'segunda_parte', 'final');
+create type public.fase_juego as enum ('pre_partido', 'primera_parte', 'segunda_parte', 'final');
 
 create table public.estadisticas_jugadora (
   id uuid primary key default gen_random_uuid(),
@@ -227,8 +249,8 @@ create index estadisticas_jugadora_jugadora_id_idx on public.estadisticas_jugado
 
 alter table public.estadisticas_jugadora enable row level security;
 
-create policy "estadisticas_jugadora_select_authenticated"
-  on public.estadisticas_jugadora for select to authenticated using (true);
+create policy "estadisticas_jugadora_select_public"
+  on public.estadisticas_jugadora for select to public using (true);
 
 create policy "estadisticas_jugadora_insert_admin_editor"
   on public.estadisticas_jugadora for insert to authenticated
@@ -267,8 +289,8 @@ create index estadisticas_equipo_partido_id_idx on public.estadisticas_equipo (p
 
 alter table public.estadisticas_equipo enable row level security;
 
-create policy "estadisticas_equipo_select_authenticated"
-  on public.estadisticas_equipo for select to authenticated using (true);
+create policy "estadisticas_equipo_select_public"
+  on public.estadisticas_equipo for select to public using (true);
 
 create policy "estadisticas_equipo_insert_admin_editor"
   on public.estadisticas_equipo for insert to authenticated
@@ -306,6 +328,10 @@ create policy "comentarios_update_admin_editor"
   on public.comentarios for update to authenticated
   using (public.es_admin_o_editor())
   with check (public.es_admin_o_editor());
+
+create policy "comentarios_delete_admin_editor"
+  on public.comentarios for delete to authenticated
+  using (public.es_admin_o_editor());
 
 -- =========================================================
 -- 9. trigger: crear perfil automáticamente al registrarse (rol viewer)

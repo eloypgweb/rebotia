@@ -1,5 +1,8 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
+import EscudoEquipo from '../../../components/EscudoEquipo.astro';
+
+const esAdmin = Astro.locals.perfil?.rol === 'admin';
 
 const { data: equipos, error } = await Astro.locals.supabase
   .from('equipos')
@@ -16,12 +19,16 @@ const errorEliminar = Astro.url.searchParams.get('error');
 
   <div class="mt-2 flex items-center justify-between">
     <h1 class="text-2xl font-bold text-club-navy">Equipos</h1>
-    <a
-      href="/coach/equipos/nuevo"
-      class="rounded-lg bg-club-navy px-4 py-2 text-sm font-semibold text-club-white transition-colors hover:bg-club-blue hover:text-club-navy"
-    >
-      + Nuevo equipo
-    </a>
+    {
+      esAdmin && (
+        <a
+          href="/coach/equipos/nuevo"
+          class="rounded-lg bg-club-navy px-4 py-2 text-sm font-semibold text-club-white transition-colors hover:bg-club-blue hover:text-club-navy"
+        >
+          + Nuevo equipo
+        </a>
+      )
+    }
   </div>
 
   {error && <p class="mt-4 text-sm text-red-600">Error: {error.message}</p>}
@@ -33,13 +40,7 @@ const errorEliminar = Astro.url.searchParams.get('error');
       equipos?.map((equipo) => (
         <div class="flex items-center justify-between gap-4 px-6 py-4">
           <div class="flex items-center gap-4">
-            {equipo.escudo_url ? (
-              <img src={equipo.escudo_url} alt={`Escudo de ${equipo.nombre}`} class="h-10 w-10 rounded-full object-contain" />
-            ) : (
-              <div class="flex h-10 w-10 items-center justify-center rounded-full bg-club-blue/10 text-xs text-club-navy/40">
-                Sin foto
-              </div>
-            )}
+            <EscudoEquipo nombre={equipo.nombre} escudoUrl={equipo.escudo_url} />
             <div>
               <p class="font-medium text-club-navy">{equipo.nombre}</p>
               <p class="text-sm text-club-navy/60">
@@ -47,16 +48,20 @@ const errorEliminar = Astro.url.searchParams.get('error');
               </p>
             </div>
           </div>
-          <div class="flex items-center gap-4 text-sm">
-            <a href={`/coach/equipos/${equipo.id}/editar`} class="font-medium text-club-navy hover:underline">
-              Editar
-            </a>
-            <form method="POST" action={`/coach/equipos/${equipo.id}/eliminar`}>
-              <button type="submit" class="font-medium text-red-600 hover:underline">
-                Eliminar
-              </button>
-            </form>
-          </div>
+          {
+            esAdmin && (
+              <div class="flex items-center gap-4 text-sm">
+                <a href={`/coach/equipos/${equipo.id}/editar`} class="font-medium text-club-navy hover:underline">
+                  Editar
+                </a>
+                <form method="POST" action={`/coach/equipos/${equipo.id}/eliminar`}>
+                  <button type="submit" class="font-medium text-red-600 hover:underline">
+                    Eliminar
+                  </button>
+                </form>
+              </div>
+            )
+          }
         </div>
       ))
     }

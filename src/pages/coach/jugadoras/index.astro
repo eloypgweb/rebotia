@@ -1,6 +1,8 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
 
+const esAdmin = Astro.locals.perfil?.rol === 'admin';
+
 const { data: jugadoras, error } = await Astro.locals.supabase
   .from('jugadoras')
   .select('*, equipos(nombre)')
@@ -16,12 +18,16 @@ const errorEliminar = Astro.url.searchParams.get('error');
 
   <div class="mt-2 flex items-center justify-between">
     <h1 class="text-2xl font-bold text-club-navy">Jugadoras</h1>
-    <a
-      href="/coach/jugadoras/nuevo"
-      class="rounded-lg bg-club-navy px-4 py-2 text-sm font-semibold text-club-white transition-colors hover:bg-club-blue hover:text-club-navy"
-    >
-      + Nueva jugadora
-    </a>
+    {
+      esAdmin && (
+        <a
+          href="/coach/jugadoras/nuevo"
+          class="rounded-lg bg-club-navy px-4 py-2 text-sm font-semibold text-club-white transition-colors hover:bg-club-blue hover:text-club-navy"
+        >
+          + Nueva jugadora
+        </a>
+      )
+    }
   </div>
 
   {error && <p class="mt-4 text-sm text-red-600">Error: {error.message}</p>}
@@ -42,16 +48,20 @@ const errorEliminar = Astro.url.searchParams.get('error');
               {jugadora.posicion && ` · ${jugadora.posicion}`}
             </p>
           </div>
-          <div class="flex items-center gap-4 text-sm">
-            <a href={`/coach/jugadoras/${jugadora.id}/editar`} class="font-medium text-club-navy hover:underline">
-              Editar
-            </a>
-            <form method="POST" action={`/coach/jugadoras/${jugadora.id}/eliminar`}>
-              <button type="submit" class="font-medium text-red-600 hover:underline">
-                Eliminar
-              </button>
-            </form>
-          </div>
+          {
+            esAdmin && (
+              <div class="flex items-center gap-4 text-sm">
+                <a href={`/coach/jugadoras/${jugadora.id}/editar`} class="font-medium text-club-navy hover:underline">
+                  Editar
+                </a>
+                <form method="POST" action={`/coach/jugadoras/${jugadora.id}/eliminar`}>
+                  <button type="submit" class="font-medium text-red-600 hover:underline">
+                    Eliminar
+                  </button>
+                </form>
+              </div>
+            )
+          }
         </div>
       ))
     }

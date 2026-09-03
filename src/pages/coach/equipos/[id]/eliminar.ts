@@ -1,6 +1,10 @@
 import type { APIRoute } from 'astro';
 
 export const POST: APIRoute = async ({ params, locals, redirect }) => {
+  if (locals.perfil?.rol !== 'admin') {
+    return redirect('/coach/equipos');
+  }
+
   const { error, count } = await locals.supabase
     .from('equipos')
     .delete({ count: 'exact' })

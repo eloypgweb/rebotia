@@ -1,0 +1,19 @@
+---
+interface Props {
+  nombre: string;
+  escudoUrl?: string | null;
+  size?: string;
+}
+
+const { nombre, escudoUrl, size = 'h-10 w-10' } = Astro.props;
+---
+
+{
+  escudoUrl ? (
+    <img src={escudoUrl} alt={`Escudo de ${nombre}`} class={`${size} shrink-0 rounded-full object-contain`} />
+  ) : (
+    <div class={`flex ${size} shrink-0 items-center justify-center rounded-full bg-club-blue/10 text-xs text-club-navy/40`}>
+      Sin foto
+    </div>
+  )
+}

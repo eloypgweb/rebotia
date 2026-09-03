@@ -1,10 +1,17 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
+import EscudoEquipo from '../../../components/EscudoEquipo.astro';
+
+const esAdmin = Astro.locals.perfil?.rol === 'admin';
 
 const { data: partidos, error } = await Astro.locals.supabase
   .from('partidos')
-  .select('*, local:equipo_local_id(nombre), visitante:equipo_visitante_id(nombre)')
+  .select(
+    '*, local:equipo_local_id(nombre, escudo_url), visitante:equipo_visitante_id(nombre, escudo_url)',
+  )
   .order('fecha_inicio', { ascending: false });
+
+const errorEliminar = Astro.url.searchParams.get('error');
 
 const formateador = new Intl.DateTimeFormat('es-ES', {
   dateStyle: 'medium',
@@ -19,32 +26,65 @@ const formateador = new Intl.DateTimeFormat('es-ES', {
 
   <div class="mt-2 flex items-center justify-between">
     <h1 class="text-2xl font-bold text-club-navy">Partidos</h1>
-    <a
-      href="/coach/partidos/nuevo"
-      class="rounded-lg bg-club-navy px-4 py-2 text-sm font-semibold text-club-white transition-colors hover:bg-club-blue hover:text-club-navy"
-    >
-      + Nuevo partido
-    </a>
+    {
+      esAdmin && (
+        <a
+          href="/coach/partidos/nuevo"
+          class="rounded-lg bg-club-navy px-4 py-2 text-sm font-semibold text-club-white transition-colors hover:bg-club-blue hover:text-club-navy"
+        >
+          + Nuevo partido
+        </a>
+      )
+    }
   </div>
 
   {error && <p class="mt-4 text-sm text-red-600">Error: {error.message}</p>}
+  {errorEliminar && <p class="mt-4 text-sm text-red-600">No se pudo eliminar: {errorEliminar}</p>}
 
   <div class="mt-6 divide-y divide-club-blue/20 rounded-xl border border-club-blue/30 bg-white shadow-sm">
     {partidos?.length === 0 && <p class="p-6 text-club-navy/60">No hay partidos todavía.</p>}
     {
       partidos?.map((partido) => (
-        <div class="flex items-center justify-between gap-4 px-6 py-4">
-          <div>
-            <p class="font-medium text-club-navy">
-              {partido.local?.nombre} <span class="text-club-navy/40">vs</span> {partido.visitante?.nombre}
-            </p>
-            <p class="text-sm text-club-navy/60">
-              {formateador.format(new Date(partido.fecha_inicio))}
-              {' · '}
-              {partido.tipo === 'amistoso' ? 'Amistoso' : `Liga${partido.jornada != null ? ` · Jornada ${partido.jornada}` : ''}`}
-              {' · '}
-              {partido.fase_actual}
-            </p>
+        <div class="flex flex-wrap items-center justify-between gap-4 px-6 py-4">
+          <div class="flex items-center gap-3">
+            <EscudoEquipo nombre={partido.local?.nombre ?? ''} escudoUrl={partido.local?.escudo_url} size="h-8 w-8" />
+            <div>
+              <p class="font-medium text-club-navy">
+                {partido.local?.nombre} <span class="text-club-navy/40">vs</span> {partido.visitante?.nombre}
+              </p>
+              <p class="text-sm text-club-navy/60">
+                {formateador.format(new Date(partido.fecha_inicio))}
+                {' · '}
+                {partido.tipo === 'amistoso' ? 'Amistoso' : `Liga${partido.jornada != null ? ` · Jornada ${partido.jornada}` : ''}`}
+                {' · '}
+                {partido.fase_actual}
+              </p>
+            </div>
+            <EscudoEquipo
+              nombre={partido.visitante?.nombre ?? ''}
+              escudoUrl={partido.visitante?.escudo_url}
+              size="h-8 w-8"
+            />
+          </div>
+
+          <div class="flex shrink-0 items-center gap-4 text-sm">
+            <a href={`/coach/partidos/${partido.id}`} class="font-medium text-club-navy hover:underline">
+              Ver info de partido
+            </a>
+            {
+              esAdmin && (
+                <>
+                  <a href={`/coach/partidos/${partido.id}/editar`} class="font-medium text-club-navy hover:underline">
+                    Editar
+                  </a>
+                  <form method="POST" action={`/coach/partidos/${partido.id}/eliminar`}>
+                    <button type="submit" class="font-medium text-red-600 hover:underline">
+                      Eliminar
+                    </button>
+                  </form>
+                </>
+              )
+            }
           </div>
         </div>
       ))
