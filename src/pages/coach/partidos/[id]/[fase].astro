@@ -8,10 +8,6 @@ const FASES = {
     titulo: 'Al descanso',
     puntos: ['Estadísticas de la 1ª parte', 'Comentarios'],
   },
-  'post-partido': {
-    titulo: 'Post-Partido',
-    puntos: ['Estadísticas completas', 'Resultado final', 'Valoración'],
-  },
 } as const;
 
 const info = fase && fase in FASES ? FASES[fase as keyof typeof FASES] : undefined;

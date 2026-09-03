@@ -7,20 +7,26 @@ if (Astro.locals.perfil?.rol !== 'admin') {
 
 let error: string | null = null;
 
-if (Astro.request.method === 'POST') {
+const { data: propio } = await Astro.locals.supabase
+  .from('equipos')
+  .select('id, nombre')
+  .eq('es_propio', true)
+  .limit(1)
+  .maybeSingle();
+
+if (Astro.request.method === 'POST' && propio) {
   const formData = await Astro.request.formData();
-  const equipo_id = formData.get('equipo_id')?.toString();
   const nombre = formData.get('nombre')?.toString().trim();
   const dorsalRaw = formData.get('dorsal')?.toString().trim();
   const dorsal = dorsalRaw ? Number(dorsalRaw) : null;
   const posicion = formData.get('posicion')?.toString().trim() || null;
 
-  if (!equipo_id || !nombre) {
-    error = 'El equipo y el nombre son obligatorios.';
+  if (!nombre) {
+    error = 'El nombre es obligatorio.';
   } else {
     const { error: insertError } = await Astro.locals.supabase
       .from('jugadoras')
-      .insert({ equipo_id, nombre, dorsal, posicion });
+      .insert({ equipo_id: propio.id, nombre, dorsal, posicion });
 
     if (insertError) {
       error = insertError.message;
@@ -29,8 +35,6 @@ if (Astro.request.method === 'POST') {
     }
   }
 }
-
-const { data: equipos } = await Astro.locals.supabase.from('equipos').select('id, nombre').order('nombre');
 
 const inputClass =
   'rounded-lg border border-club-blue/40 px-3 py-2 text-club-navy outline-none focus:border-club-blue focus:ring-2 focus:ring-club-blue/30';
@@ -44,11 +48,11 @@ const labelClass = 'text-sm font-medium text-club-navy';
   <h1 class="mt-2 text-2xl font-bold text-club-navy">Nueva jugadora</h1>
 
   {
-    !equipos?.length ? (
+    !propio ? (
       <p class="mt-6 rounded-xl border border-club-blue/30 bg-white p-6 text-club-navy/70 shadow-sm">
-        Todavía no hay equipos.{' '}
-        <a href="/coach/equipos/nuevo" class="font-medium text-club-navy hover:underline">
-          Crea uno primero
+        Todavía no tienes marcado tu equipo propio.{' '}
+        <a href="/coach/equipos" class="font-medium text-club-navy hover:underline">
+          Márcalo primero
         </a>
         .
       </p>
@@ -60,14 +64,8 @@ const labelClass = 'text-sm font-medium text-club-navy';
         {error && <p class="text-sm text-red-600">{error}</p>}
 
         <div class="flex flex-col gap-1">
-          <label for="equipo_id" class={labelClass}>
-            Equipo
-          </label>
-          <select id="equipo_id" name="equipo_id" required class={inputClass}>
-            {equipos.map((equipo) => (
-              <option value={equipo.id}>{equipo.nombre}</option>
-            ))}
-          </select>
+          <span class={labelClass}>Equipo</span>
+          <p class="rounded-lg border border-club-blue/20 bg-club-blue/5 px-3 py-2 text-club-navy/70">{propio.nombre}</p>
         </div>
 
         <div class="flex flex-col gap-1">

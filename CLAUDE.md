@@ -51,7 +51,7 @@ Puntos, tiros de 2 y 3 metidos, tiros libres metidos/intentados, faltas.
 - `equipos` (id, nombre, escudo_url, categoria, es_propio)
 - `jugadoras` (id, equipo_id, nombre, dorsal, posicion)
 - `partidos` (id, equipo_local_id, equipo_visitante_id, fecha, jornada,
-  fase_actual, goles_local, goles_visitante, creado_por)
+  fase_actual, puntos_local, puntos_visitante, creado_por)
 - `convocatorias` (partido_id, jugadora_id, titular, minutos_jugados)
 - `estadisticas_jugadora` (id, partido_id, jugadora_id, fase, minutos,
   puntos, t2_metidos, t3_metidos, tl_metidos, tl_intentados, faltas,

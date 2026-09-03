@@ -141,8 +141,8 @@ create table public.partidos (
   tipo public.tipo_partido not null default 'liga',
   jornada integer,
   fase_actual public.estado_partido not null default 'pre_partido',
-  goles_local integer not null default 0,
-  goles_visitante integer not null default 0,
+  puntos_local integer not null default 0,
+  puntos_visitante integer not null default 0,
   creado_por uuid references public.perfiles (id)
 );
 
@@ -247,6 +247,10 @@ create table public.estadisticas_jugadora (
 create index estadisticas_jugadora_partido_id_idx on public.estadisticas_jugadora (partido_id);
 create index estadisticas_jugadora_jugadora_id_idx on public.estadisticas_jugadora (jugadora_id);
 
+alter table public.estadisticas_jugadora
+  add constraint estadisticas_jugadora_partido_jugadora_fase_key
+  unique (partido_id, jugadora_id, fase);
+
 alter table public.estadisticas_jugadora enable row level security;
 
 create policy "estadisticas_jugadora_select_public"
@@ -286,6 +290,10 @@ create table public.estadisticas_equipo (
 );
 
 create index estadisticas_equipo_partido_id_idx on public.estadisticas_equipo (partido_id);
+
+alter table public.estadisticas_equipo
+  add constraint estadisticas_equipo_partido_fase_lado_key
+  unique (partido_id, fase, lado);
 
 alter table public.estadisticas_equipo enable row level security;
 

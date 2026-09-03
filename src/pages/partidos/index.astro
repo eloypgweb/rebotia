@@ -97,8 +97,8 @@ const formateadorHora = new Intl.DateTimeFormat('es-ES', { timeStyle: 'short' })
                 <p class="text-center text-sm font-medium text-club-navy">{partido.local?.nombre}</p>
               </div>
               <div class="flex basis-[16%] items-center justify-center">
-                <p class="text-lg font-bold text-club-navy">
-                  {partido.goles_local}-{partido.goles_visitante}
+                <p class="whitespace-nowrap text-lg font-bold text-club-navy">
+                  {partido.puntos_local}-{partido.puntos_visitante}
                 </p>
               </div>
               <div class="flex basis-[42%] flex-col items-center gap-1.5">

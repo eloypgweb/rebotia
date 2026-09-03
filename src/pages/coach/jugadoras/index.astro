@@ -3,10 +3,7 @@ import Layout from '../../../layouts/Layout.astro';
 
 const esAdmin = Astro.locals.perfil?.rol === 'admin';
 
-const { data: jugadoras, error } = await Astro.locals.supabase
-  .from('jugadoras')
-  .select('*, equipos(nombre)')
-  .order('nombre');
+const { data: jugadoras, error } = await Astro.locals.supabase.from('jugadoras').select('*').order('nombre');
 
 const errorEliminar = Astro.url.searchParams.get('error');
 ---
@@ -43,10 +40,7 @@ const errorEliminar = Astro.url.searchParams.get('error');
               {jugadora.dorsal != null && <span class="text-club-navy/50">#{jugadora.dorsal} </span>}
               {jugadora.nombre}
             </p>
-            <p class="text-sm text-club-navy/60">
-              {jugadora.equipos?.nombre ?? 'Sin equipo'}
-              {jugadora.posicion && ` · ${jugadora.posicion}`}
-            </p>
+            {jugadora.posicion && <p class="text-sm text-club-navy/60">{jugadora.posicion}</p>}
           </div>
           {
             esAdmin && (
