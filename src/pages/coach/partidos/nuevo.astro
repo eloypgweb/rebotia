@@ -110,11 +110,11 @@ const labelClass = 'text-sm font-medium text-club-navy';
         <fieldset class="flex flex-col gap-1">
           <legend class={labelClass}>Localía</legend>
           <label class="flex items-center gap-2 text-sm text-club-navy">
-            <input type="radio" name="localia" value="casa" checked required />
+            <input id="localia_casa" type="radio" name="localia" value="casa" checked required />
             Somos locales
           </label>
           <label class="flex items-center gap-2 text-sm text-club-navy">
-            <input type="radio" name="localia" value="fuera" required />
+            <input id="localia_fuera" type="radio" name="localia" value="fuera" required />
             Somos visitantes
           </label>
         </fieldset>
@@ -237,6 +237,26 @@ const labelClass = 'text-sm font-medium text-club-navy';
         const convocatoria = new Date(inicio.getTime() - 60 * 60 * 1000);
         convInput.value = toTime(convocatoria);
       });
+    }
+
+    const PABELLON_PROPIO_NOMBRE = 'Pabellón Deportivo Carlos Sastre';
+    const PABELLON_PROPIO_URL = 'https://maps.app.goo.gl/SSH4mpwd8vMgTd526';
+
+    const localiaRadios = document.querySelectorAll<HTMLInputElement>('input[name="localia"]');
+    const ubicacionInput = document.getElementById('ubicacion') as HTMLInputElement | null;
+    const ubicacionUrlInput = document.getElementById('ubicacion_url') as HTMLInputElement | null;
+
+    if (localiaRadios.length && ubicacionInput && ubicacionUrlInput) {
+      const rellenarPabellonPropio = () => {
+        const esCasa = Array.from(localiaRadios).find((radio) => radio.checked)?.value === 'casa';
+        if (esCasa && !ubicacionInput.value && !ubicacionUrlInput.value) {
+          ubicacionInput.value = PABELLON_PROPIO_NOMBRE;
+          ubicacionUrlInput.value = PABELLON_PROPIO_URL;
+        }
+      };
+
+      localiaRadios.forEach((radio) => radio.addEventListener('change', rellenarPabellonPropio));
+      rellenarPabellonPropio();
     }
   </script>
 </Layout>

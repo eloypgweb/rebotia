@@ -2,6 +2,7 @@
 import Layout from '../../layouts/Layout.astro';
 import EscudoEquipo from '../../components/EscudoEquipo.astro';
 import { formatearDia, formatearHora, HORARIO_POR_DEFINIR } from '../../lib/fechas';
+import { enlaceMapa } from '../../lib/mapas';
 
 const { data: partidos, error } = await Astro.locals.supabase
   .from('partidos')
@@ -60,6 +61,18 @@ const proximos = (partidos ?? []).filter((p) => p.fase_actual !== 'finalizado');
             {partido.hora_inicio && (
               <p class="mt-3 text-center text-xs text-club-navy/50">🏀 Inicio: {formatearHora(partido.hora_inicio)}</p>
             )}
+            {partido.ubicacion && (
+              <p class="mt-1 text-center text-xs">
+                <a
+                  href={enlaceMapa(partido.ubicacion, partido.ubicacion_url)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="font-medium text-club-navy hover:text-club-blue hover:underline"
+                >
+                  📍 {partido.ubicacion}
+                </a>
+              </p>
+            )}
           </div>
         ))
       }
@@ -109,7 +122,11 @@ const proximos = (partidos ?? []).filter((p) => p.fase_actual !== 'finalizado');
               </div>
             </div>
 
-            <p class="mt-3 text-center text-sm font-medium text-club-navy hover:underline">
+            {partido.ubicacion && (
+              <p class="mt-3 text-center text-xs text-club-navy/50">📍 {partido.ubicacion}</p>
+            )}
+
+            <p class="mt-1 text-center text-sm font-medium text-club-navy hover:underline">
               Ver estadísticas del partido →
             </p>
           </a>

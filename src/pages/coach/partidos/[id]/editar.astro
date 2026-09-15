@@ -270,5 +270,25 @@ const labelClass = 'text-sm font-medium text-club-navy';
         convInput.value = toTime(convocatoria);
       });
     }
+
+    const PABELLON_PROPIO_NOMBRE = 'Pabellón Deportivo Carlos Sastre';
+    const PABELLON_PROPIO_URL = 'https://maps.app.goo.gl/SSH4mpwd8vMgTd526';
+
+    const localiaRadios = document.querySelectorAll<HTMLInputElement>('input[name="localia"]');
+    const ubicacionInput = document.getElementById('ubicacion') as HTMLInputElement | null;
+    const ubicacionUrlInput = document.getElementById('ubicacion_url') as HTMLInputElement | null;
+
+    if (localiaRadios.length && ubicacionInput && ubicacionUrlInput) {
+      const rellenarPabellonPropio = () => {
+        const esCasa = Array.from(localiaRadios).find((radio) => radio.checked)?.value === 'casa';
+        if (esCasa && !ubicacionInput.value && !ubicacionUrlInput.value) {
+          ubicacionInput.value = PABELLON_PROPIO_NOMBRE;
+          ubicacionUrlInput.value = PABELLON_PROPIO_URL;
+        }
+      };
+
+      localiaRadios.forEach((radio) => radio.addEventListener('change', rellenarPabellonPropio));
+      rellenarPabellonPropio();
+    }
   </script>
 </Layout>
