@@ -1,0 +1,180 @@
+---
+interface Punto {
+  etiqueta: string;
+  valor: number;
+  detalle: string;
+}
+
+interface Props {
+  titulo: string;
+  unidad: string;
+  datos: Punto[];
+  color?: string;
+}
+
+const { titulo, unidad, datos, color = '#000b45' } = Astro.props;
+
+const ANCHO = 600;
+const ALTO = 220;
+const PAD_IZQ = 30;
+const PAD_DER = 12;
+const PAD_ARR = 16;
+const PAD_ABAJO = 26;
+const anchoPlot = ANCHO - PAD_IZQ - PAD_DER;
+const altoPlot = ALTO - PAD_ARR - PAD_ABAJO;
+
+const valores = datos.map((d) => d.valor);
+const maxValor = valores.length ? Math.max(...valores) : 0;
+const techo = Math.max(5, Math.ceil((maxValor * 1.15) / 5) * 5);
+
+const coordX = (i: number) =>
+  datos.length > 1 ? PAD_IZQ + (i * anchoPlot) / (datos.length - 1) : PAD_IZQ + anchoPlot / 2;
+const coordY = (v: number) => PAD_ARR + altoPlot - (v / techo) * altoPlot;
+
+const puntosSvg = datos.map((d, i) => ({ ...d, cx: coordX(i), cy: coordY(d.valor) }));
+const lineaPath = puntosSvg.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.cx.toFixed(1)},${p.cy.toFixed(1)}`).join(' ');
+
+const marcasY = [0, techo / 4, techo / 2, (techo * 3) / 4, techo];
+
+const pasoEtiquetas = Math.max(1, Math.ceil(datos.length / 8));
+const mostrarEtiqueta = (i: number) => datos.length <= 8 || i % pasoEtiquetas === 0 || i === datos.length - 1;
+---
+
+<div class="rounded-xl border border-club-blue/30 bg-white p-4 shadow-sm sm:p-6">
+  <h3 class="text-sm font-semibold text-club-navy">{titulo}</h3>
+
+  {
+    datos.length === 0 ? (
+      <p class="mt-4 text-sm text-club-navy/60">Todavía no hay partidos de liga jugados.</p>
+    ) : (
+      <div class="relative mt-3" data-grafica-linea data-unidad={unidad}>
+        <svg viewBox={`0 0 ${ANCHO} ${ALTO}`} class="w-full" role="img" aria-label={titulo}>
+          {marcasY.map((valor) => (
+            <g>
+              <line
+                x1={PAD_IZQ}
+                x2={ANCHO - PAD_DER}
+                y1={coordY(valor)}
+                y2={coordY(valor)}
+                stroke="#000b45"
+                stroke-opacity="0.08"
+                stroke-width="1"
+              />
+              <text x={PAD_IZQ - 6} y={coordY(valor) + 3} text-anchor="end" font-size="10" fill="#000b45" fill-opacity="0.5">
+                {Math.round(valor)}
+              </text>
+            </g>
+          ))}
+
+          <line
+            class="grafica-crosshair"
+            x1={PAD_IZQ}
+            x2={PAD_IZQ}
+            y1={PAD_ARR}
+            y2={ALTO - PAD_ABAJO}
+            stroke={color}
+            stroke-width="1"
+            stroke-opacity="0.25"
+            visibility="hidden"
+          />
+
+          <path d={lineaPath} fill="none" stroke={color} stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+
+          {puntosSvg.map((p, i) => (
+            <g>
+              <circle cx={p.cx} cy={p.cy} r="5" fill={color} stroke="#ffffff" stroke-width="2" />
+              <circle
+                class="grafica-punto"
+                data-index={i}
+                data-valor={p.valor}
+                data-detalle={p.detalle}
+                cx={p.cx}
+                cy={p.cy}
+                r="12"
+                fill="transparent"
+              />
+            </g>
+          ))}
+
+          {puntosSvg.map((p, i) =>
+            mostrarEtiqueta(i) ? (
+              <text x={p.cx} y={ALTO - PAD_ABAJO + 14} text-anchor="middle" font-size="10" fill="#000b45" fill-opacity="0.5">
+                {p.etiqueta}
+              </text>
+            ) : null
+          )}
+        </svg>
+
+        <div class="grafica-tooltip pointer-events-none absolute hidden rounded-lg bg-club-navy px-3 py-2 text-xs text-club-white shadow-lg">
+          <p class="grafica-tooltip-detalle font-medium" />
+          <p class="grafica-tooltip-valor mt-0.5 text-club-blue" />
+        </div>
+      </div>
+    )
+  }
+</div>
+
+<script>
+  document.querySelectorAll<HTMLElement>('[data-grafica-linea]').forEach((contenedor) => {
+    const svg = contenedor.querySelector<SVGSVGElement>('svg');
+    const tooltip = contenedor.querySelector<HTMLElement>('.grafica-tooltip');
+    const tooltipDetalle = contenedor.querySelector<HTMLElement>('.grafica-tooltip-detalle');
+    const tooltipValor = contenedor.querySelector<HTMLElement>('.grafica-tooltip-valor');
+    const crosshair = contenedor.querySelector<SVGLineElement>('.grafica-crosshair');
+    const puntos = Array.from(contenedor.querySelectorAll<SVGCircleElement>('.grafica-punto'));
+    const unidad = contenedor.dataset.unidad ?? '';
+
+    if (!svg || !tooltip || !tooltipDetalle || !tooltipValor || !puntos.length) return;
+
+    const mostrar = (indice: number) => {
+      const punto = puntos[indice];
+      if (!punto) return;
+
+      const cx = Number(punto.getAttribute('cx'));
+      const cy = Number(punto.getAttribute('cy'));
+      const viewBox = svg.viewBox.baseVal;
+      const rectSvg = svg.getBoundingClientRect();
+      const escalaX = rectSvg.width / viewBox.width;
+      const escalaY = rectSvg.height / viewBox.height;
+
+      tooltipDetalle.textContent = punto.dataset.detalle ?? '';
+      tooltipValor.textContent = `${punto.dataset.valor ?? ''} ${unidad}`;
+
+      tooltip.style.left = `${cx * escalaX}px`;
+      tooltip.style.top = `${cy * escalaY - 8}px`;
+      tooltip.style.transform = 'translate(-50%, -100%)';
+      tooltip.classList.remove('hidden');
+
+      if (crosshair) {
+        crosshair.setAttribute('x1', String(cx));
+        crosshair.setAttribute('x2', String(cx));
+        crosshair.setAttribute('visibility', 'visible');
+      }
+    };
+
+    const ocultar = () => {
+      tooltip.classList.add('hidden');
+      crosshair?.setAttribute('visibility', 'hidden');
+    };
+
+    svg.addEventListener('pointermove', (evento) => {
+      const viewBox = svg.viewBox.baseVal;
+      const rectSvg = svg.getBoundingClientRect();
+      const xLocal = ((evento.clientX - rectSvg.left) / rectSvg.width) * viewBox.width;
+
+      let masCercano = 0;
+      let distanciaMinima = Infinity;
+      puntos.forEach((punto, indice) => {
+        const distancia = Math.abs(Number(punto.getAttribute('cx')) - xLocal);
+        if (distancia < distanciaMinima) {
+          distanciaMinima = distancia;
+          masCercano = indice;
+        }
+      });
+
+      mostrar(masCercano);
+    });
+
+    svg.addEventListener('pointerleave', ocultar);
+  });
+</script>

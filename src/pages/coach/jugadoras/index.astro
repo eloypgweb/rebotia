@@ -42,20 +42,29 @@ const errorEliminar = Astro.url.searchParams.get('error');
             </p>
             {jugadora.posicion && <p class="text-sm text-club-navy/60">{jugadora.posicion}</p>}
           </div>
-          {
-            esAdmin && (
-              <div class="flex items-center gap-4 text-sm">
-                <a href={`/coach/jugadoras/${jugadora.id}/editar`} class="font-medium text-club-navy hover:underline">
-                  ✏️ Editar
-                </a>
-                <form method="POST" action={`/coach/jugadoras/${jugadora.id}/eliminar`}>
-                  <button type="submit" class="font-medium text-red-600 hover:underline">
-                    🗑️ Eliminar
-                  </button>
-                </form>
-              </div>
-            )
-          }
+          <div class="flex items-center gap-4 text-sm">
+            <a href={`/coach/jugadoras/${jugadora.id}`} class="font-medium text-club-navy hover:underline">
+              📊 Progresión
+            </a>
+            {
+              esAdmin && (
+                <>
+                  <a href={`/coach/jugadoras/${jugadora.id}/editar`} class="font-medium text-club-navy hover:underline">
+                    ✏️ Editar
+                  </a>
+                  <form
+                    method="POST"
+                    action={`/coach/jugadoras/${jugadora.id}/eliminar`}
+                    onsubmit="return confirm('¿Eliminar esta jugadora? Esta acción no se puede deshacer.')"
+                  >
+                    <button type="submit" class="font-medium text-red-600 hover:underline">
+                      🗑️ Eliminar
+                    </button>
+                  </form>
+                </>
+              )
+            }
+          </div>
         </div>
       ))
     }

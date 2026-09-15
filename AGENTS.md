@@ -9,28 +9,39 @@ familias.
 ## Stack
 - **Frontend**: Astro (TypeScript, modo strict)
 - **Backend / BD**: Supabase (PostgreSQL + Auth + RLS)
-- **Autenticación**: Magic link de Supabase Auth (sin contraseñas)
+- **Autenticación**: Email + contraseña de Supabase Auth. Los usuarios se
+  autoprovisionan desde el dashboard de Supabase (no hay registro público);
+  un trigger les crea el perfil con rol `viewer` por defecto, y el primer
+  admin se asciende a mano por SQL.
 
 ## Roles de usuario
-- **admin**: entrenador principal. Gestión completa.
-- **editor**: ayudantes + preparador físico. Crean partidos, registran
-  estadísticas y comentarios en directo. Acceden por magic link.
-- **viewer**: familias y jugadoras. Solo lectura, sin login (o login simple),
-  no pueden crear ni modificar nada.
+- **admin**: entrenador principal. Gestión completa: equipos, jugadoras,
+  creación/edición/borrado de partidos, y todo lo de editor.
+- **editor**: ayudantes + preparador físico. Solo pueden registrar
+  convocatoria, estadísticas y comentarios en partidos ya creados por el
+  admin — no pueden crear ni editar equipos, jugadoras ni partidos.
+- **viewer**: familias y jugadoras. Solo lectura, sin login (acceso público
+  al calendario y a las fichas de partido), no pueden crear ni modificar
+  nada.
 
 ## Estructura de navegación
-- **Sección "Coach"** (privada, admin + editor): gestión de equipos rivales,
-  plantilla de jugadoras, creación de partidos/jornadas, registro en directo
-  de estadísticas, comentarios y parciales por cuarto.
-- **Sección "Partidos jugados"** (pública, familias): listado de partidos,
-  ficha de partido con filtro dinámico de fase (1ª parte / 2ª parte / Final
-  — Final por defecto), parciales por cuarto.
+- **Sección "Coach"** (privada, admin + editor): gestión de equipos rivales
+  y plantilla de jugadoras (solo admin), creación/edición/borrado de
+  partidos (solo admin), y registro de convocatoria/estadísticas/
+  comentarios en las 3 fases de cada partido (admin + editor).
+- **Sección "Calendario de partidos"** (pública, sin login): próximos
+  partidos y partidos jugados, ficha de partido con estadísticas finales
+  por jugadora y de equipo (propio vs. rival).
 
 ## Flujo de un partido
-1. **Creación**: admin/editor da de alta el partido (rival, fecha, jornada)
-2. **Pre-Partido**: convocatoria y notas previas
-3. **Al descanso**: estadísticas de la 1ª parte + comentarios
-4. **Post-Partido**: estadísticas completas, resultado final, valoración
+1. **Creación**: admin da de alta el partido (rival, localía, tipo/jornada;
+   día, horas y ubicación del pabellón son opcionales y se pueden rellenar
+   más tarde)
+2. **Pre-Partido**: convocatoria (marcar convocada/lesionada/ausente y
+   titular) y comentarios previos
+3. **Al descanso**: estadísticas acumuladas hasta el descanso + comentarios
+4. **Post-Partido**: estadísticas finales (acumulado de todo el partido),
+   marca el partido como finalizado y calcula el marcador, + valoración
 
 ## Estadísticas
 
@@ -47,12 +58,18 @@ jugadora, para agilidad durante el partido en directo.
 Puntos, tiros de 2 y 3 metidos, tiros libres metidos/intentados, faltas.
 
 ## Modelo de datos (resumen)
-- `perfiles` (id, nombre, rol, created_at) — extiende auth.users
-- `equipos` (id, nombre, escudo_url, categoria, es_propio)
-- `jugadoras` (id, equipo_id, nombre, dorsal, posicion)
-- `partidos` (id, equipo_local_id, equipo_visitante_id, fecha, jornada,
-  fase_actual, puntos_local, puntos_visitante, creado_por)
-- `convocatorias` (partido_id, jugadora_id, titular, minutos_jugados)
+- `perfiles` (id, nombre, rol, avatar_url, created_at) — extiende auth.users
+- `equipos` (id, nombre, escudo_url, categoria, es_propio) — jugadoras solo
+  se llevan del equipo propio; los rivales son solo para enfrentar partidos
+- `jugadoras` (id, equipo_id, nombre, dorsal, posicion) — siempre del
+  equipo propio, sin selector de equipo en el formulario
+- `partidos` (id, equipo_local_id, equipo_visitante_id, fecha_partido,
+  hora_inicio, hora_convocatoria, ubicacion, ubicacion_url, tipo, jornada,
+  fase_actual, puntos_local, puntos_visitante, creado_por) — fecha_partido/
+  hora_inicio/hora_convocatoria son independientes entre sí y opcionales
+  (se puede crear un partido sin horario aún definido)
+- `convocatorias` (partido_id, jugadora_id, estado ['convocada'|'lesionada'|
+  'ausente'], titular, minutos_jugados)
 - `estadisticas_jugadora` (id, partido_id, jugadora_id, fase, minutos,
   puntos, t2_metidos, t3_metidos, tl_metidos, tl_intentados, faltas,
   autor_id, created_at)
@@ -67,11 +84,19 @@ Toda estadística y comentario debe guardar autoría (`autor_id`) y
 `created_at`, para saber quién escribió cada dato y cuándo.
 
 ## Visión a futuro (no implementar aún, pero dejar la puerta abierta)
+- Filtro dinámico de fase (1ª parte / 2ª parte / Final) en la ficha pública
+  de partido, calculando la 2ª parte por diferencia (Final − 1ª parte)
 - Gestión por temporadas
 - Perfil histórico de cada rival
 - Exportar resumen de partido en PDF
 - Estadísticas acumuladas de temporada por jugadora
 
 ## Filosofía de diseño
-Minimizar fricción durante el partido: registro rápido tipo contador en vez
-de formularios largos, sin login pesado para editores (magic link).
+Minimizar fricción durante el partido: registro rápido tipo formulario de
+totales (no contadores en vivo) en vez de formularios largos y repetitivos,
+sin login pesado para las familias (acceso público sin cuenta).
+
+## Pendiente / conocido roto
+- Subida de foto de perfil (`/perfil`): falla con "new row violates row
+  level security policy" al subir a Supabase Storage pese a que las
+  políticas y el JWT del usuario son correctos. Pausado, sin resolver.

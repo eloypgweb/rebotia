@@ -1,0 +1,157 @@
+---
+import Layout from '../../../../layouts/Layout.astro';
+import GraficaLinea from '../../../../components/GraficaLinea.astro';
+import { formatearDia } from '../../../../lib/fechas';
+
+const { id } = Astro.params;
+
+const { data: jugadora } = await Astro.locals.supabase.from('jugadoras').select('*').eq('id', id).single();
+
+if (!jugadora) {
+  return Astro.redirect('/coach/jugadoras');
+}
+
+const { data: filas } = await Astro.locals.supabase
+  .from('estadisticas_jugadora')
+  .select(
+    'minutos, puntos, t2_metidos, t3_metidos, tl_metidos, tl_intentados, faltas, partido:partido_id(fecha_partido, tipo, jornada, fase_actual, local:equipo_local_id(nombre, es_propio), visitante:equipo_visitante_id(nombre, es_propio))',
+  )
+  .eq('jugadora_id', id)
+  .eq('fase', 'final');
+
+// Solo cuentan los partidos de liga ya finalizados y con fecha (los amistosos
+// no entran en la progresión de temporada).
+const partidosLiga = (filas ?? [])
+  .filter(
+    (f) => f.partido && f.partido.tipo !== 'amistoso' && f.partido.fase_actual === 'finalizado' && f.partido.fecha_partido,
+  )
+  .map((f) => {
+    const p = f.partido!;
+    const propioEsLocal = p.local?.es_propio === true;
+    const rival = (propioEsLocal ? p.visitante?.nombre : p.local?.nombre) ?? '¿?';
+    return { ...f, fecha: p.fecha_partido as string, jornada: p.jornada, rival };
+  })
+  .sort((a, b) => a.fecha.localeCompare(b.fecha));
+
+const partidosContados = partidosLiga.length;
+
+const totales = partidosLiga.reduce(
+  (acc, f) => ({
+    puntos: acc.puntos + f.puntos,
+    minutos: acc.minutos + f.minutos,
+    t2: acc.t2 + f.t2_metidos,
+    t3: acc.t3 + f.t3_metidos,
+    tlMetidos: acc.tlMetidos + f.tl_metidos,
+    tlIntentados: acc.tlIntentados + f.tl_intentados,
+    faltas: acc.faltas + f.faltas,
+  }),
+  { puntos: 0, minutos: 0, t2: 0, t3: 0, tlMetidos: 0, tlIntentados: 0, faltas: 0 },
+);
+
+const promedioPuntos = partidosContados ? totales.puntos / partidosContados : 0;
+const promedioMinutos = partidosContados ? totales.minutos / partidosContados : 0;
+
+const formateadorCorto = new Intl.DateTimeFormat('es-ES', { day: '2-digit', month: '2-digit' });
+
+const datosPuntos = partidosLiga.map((f) => ({
+  etiqueta: formateadorCorto.format(new Date(`${f.fecha}T00:00:00`)),
+  valor: f.puntos,
+  detalle: `vs ${f.rival} — ${formatearDia(f.fecha)}`,
+}));
+
+const datosMinutos = partidosLiga.map((f) => ({
+  etiqueta: formateadorCorto.format(new Date(`${f.fecha}T00:00:00`)),
+  valor: f.minutos,
+  detalle: `vs ${f.rival} — ${formatearDia(f.fecha)}`,
+}));
+
+const historialDesc = [...partidosLiga].reverse();
+
+const tiles = [
+  { etiqueta: 'Partidos de liga', valor: partidosContados },
+  { etiqueta: 'Puntos totales', valor: totales.puntos },
+  { etiqueta: 'Puntos / partido', valor: promedioPuntos.toFixed(1) },
+  { etiqueta: 'Minutos totales', valor: totales.minutos },
+  { etiqueta: 'Minutos / partido', valor: promedioMinutos.toFixed(1) },
+];
+---
+
+<Layout title={`${jugadora.nombre} — Rebotia`}>
+  <a href="/coach/jugadoras" class="text-sm font-medium text-club-navy/70 hover:text-club-navy hover:underline">
+    ← Volver a Jugadoras
+  </a>
+  <h1 class="mt-2 text-2xl font-bold text-club-navy">
+    {jugadora.dorsal != null && <span class="text-club-navy/50">#{jugadora.dorsal} </span>}
+    {jugadora.nombre}
+  </h1>
+  {jugadora.posicion && <p class="text-sm text-club-navy/60">{jugadora.posicion}</p>}
+
+  <p class="mt-4 text-xs text-club-navy/50">
+    Solo cuentan los partidos de Liga ya jugados (los amistosos no entran en el total de temporada).
+  </p>
+
+  <div class="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-5">
+    {
+      tiles.map((tile) => (
+        <div class="rounded-xl border border-club-blue/30 bg-white p-4 text-center shadow-sm">
+          <p class="text-2xl font-semibold text-club-navy">{tile.valor}</p>
+          <p class="mt-1 text-xs text-club-navy/60">{tile.etiqueta}</p>
+        </div>
+      ))
+    }
+  </div>
+
+  <div class="mt-6 grid gap-4 sm:grid-cols-2">
+    <GraficaLinea titulo="Puntos por partido" unidad="pts" datos={datosPuntos} />
+    <GraficaLinea titulo="Minutos por partido" unidad="min" datos={datosMinutos} color="#66befe" />
+  </div>
+
+  <section class="mt-8">
+    <h2 class="text-lg font-semibold text-club-navy">Partidos de liga</h2>
+
+    {
+      historialDesc.length === 0 ? (
+        <p class="mt-2 rounded-xl border border-club-blue/30 bg-white p-6 text-club-navy/70 shadow-sm">
+          Todavía no hay estadísticas registradas en ningún partido de liga.
+        </p>
+      ) : (
+        <div class="mt-2 overflow-x-auto rounded-xl border border-club-blue/30 bg-white shadow-sm">
+          <table class="w-full min-w-[600px] text-left text-sm">
+            <thead>
+              <tr class="border-b border-club-blue/20 text-club-navy/60">
+                <th class="px-4 py-3 font-medium">Partido</th>
+                <th class="px-4 py-3 font-medium">Min</th>
+                <th class="px-4 py-3 font-medium">Pts</th>
+                <th class="px-4 py-3 font-medium">T2</th>
+                <th class="px-4 py-3 font-medium">T3</th>
+                <th class="px-4 py-3 font-medium">TL</th>
+                <th class="px-4 py-3 font-medium">Faltas</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-club-blue/10">
+              {historialDesc.map((f) => (
+                <tr class="text-club-navy">
+                  <td class="px-4 py-3">
+                    <p class="font-medium">vs {f.rival}</p>
+                    <p class="text-xs text-club-navy/50">
+                      {formatearDia(f.fecha)}
+                      {f.jornada != null && ` · Jornada ${f.jornada}`}
+                    </p>
+                  </td>
+                  <td class="px-4 py-3">{f.minutos}</td>
+                  <td class="px-4 py-3">{f.puntos}</td>
+                  <td class="px-4 py-3">{f.t2_metidos}</td>
+                  <td class="px-4 py-3">{f.t3_metidos}</td>
+                  <td class="px-4 py-3">
+                    {f.tl_metidos}/{f.tl_intentados}
+                  </td>
+                  <td class="px-4 py-3">{f.faltas}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )
+    }
+  </section>
+</Layout>
