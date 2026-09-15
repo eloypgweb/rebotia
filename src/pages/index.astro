@@ -2,6 +2,7 @@
 import Layout from '../layouts/Layout.astro';
 import EscudoEquipo from '../components/EscudoEquipo.astro';
 import { formatearDia, formatearHora, HORARIO_POR_DEFINIR } from '../lib/fechas';
+import { enlaceMapa } from '../lib/mapas';
 
 const rol = Astro.locals.perfil?.rol;
 const puedeVerCoach = rol === 'admin' || rol === 'editor';
@@ -76,6 +77,16 @@ const { data: ultimo } = await Astro.locals.supabase
               <p class="font-bold text-club-navy">📋 Convocatoria: {formatearHora(proximo.hora_convocatoria)}</p>
             )}
             {proximo.hora_inicio && <p>🏀 Inicio del partido: {formatearHora(proximo.hora_inicio)}</p>}
+            {proximo.ubicacion && (
+              <a
+                href={enlaceMapa(proximo.ubicacion, proximo.ubicacion_url)}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="font-medium text-club-navy underline decoration-club-blue/50 hover:text-club-blue"
+              >
+                📍 {proximo.ubicacion}
+              </a>
+            )}
           </div>
         </div>
       </section>

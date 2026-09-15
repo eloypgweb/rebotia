@@ -25,7 +25,7 @@ const errorEliminar = Astro.url.searchParams.get('error');
           href="/coach/equipos/nuevo"
           class="rounded-lg bg-club-navy px-4 py-2 text-sm font-semibold text-club-white transition-colors hover:bg-club-blue hover:text-club-navy"
         >
-          + Nuevo equipo
+          ➕ Nuevo equipo
         </a>
       )
     }
@@ -52,11 +52,11 @@ const errorEliminar = Astro.url.searchParams.get('error');
             esAdmin && (
               <div class="flex items-center gap-4 text-sm">
                 <a href={`/coach/equipos/${equipo.id}/editar`} class="font-medium text-club-navy hover:underline">
-                  Editar
+                  ✏️ Editar
                 </a>
                 <form method="POST" action={`/coach/equipos/${equipo.id}/eliminar`}>
                   <button type="submit" class="font-medium text-red-600 hover:underline">
-                    Eliminar
+                    🗑️ Eliminar
                   </button>
                 </form>
               </div>

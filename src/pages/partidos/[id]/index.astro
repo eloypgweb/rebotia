@@ -2,6 +2,7 @@
 import Layout from '../../../layouts/Layout.astro';
 import EscudoEquipo from '../../../components/EscudoEquipo.astro';
 import { formatearDia, formatearHora, HORARIO_POR_DEFINIR } from '../../../lib/fechas';
+import { enlaceMapa } from '../../../lib/mapas';
 
 const { id } = Astro.params;
 
@@ -117,6 +118,21 @@ if (jugado) {
     {' · '}
     {partido.tipo === 'amistoso' ? 'Amistoso' : `Liga${partido.jornada != null ? ` · Jornada ${partido.jornada}` : ''}`}
   </p>
+
+  {
+    partido.ubicacion && (
+      <p class="mt-1 text-center text-sm">
+        <a
+          href={enlaceMapa(partido.ubicacion, partido.ubicacion_url)}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="font-medium text-club-navy underline decoration-club-blue/50 hover:text-club-blue"
+        >
+          📍 {partido.ubicacion}
+        </a>
+      </p>
+    )
+  }
 
   {
     !jugado ? (

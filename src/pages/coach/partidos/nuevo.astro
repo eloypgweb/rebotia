@@ -30,6 +30,8 @@ if (Astro.request.method === 'POST' && propio) {
   const fecha_partido = formData.get('fecha_partido')?.toString() || null;
   const hora_inicio = formData.get('hora_inicio')?.toString() || null;
   const hora_convocatoria = formData.get('hora_convocatoria')?.toString() || null;
+  const ubicacion = formData.get('ubicacion')?.toString().trim() || null;
+  const ubicacion_url = formData.get('ubicacion_url')?.toString().trim() || null;
 
   if (!rivalId || !localia || !tipo) {
     error = 'Rival, tipo y localía son obligatorios.';
@@ -45,6 +47,8 @@ if (Astro.request.method === 'POST' && propio) {
       fecha_partido,
       hora_inicio,
       hora_convocatoria,
+      ubicacion,
+      ubicacion_url,
       creado_por: Astro.locals.user?.id,
     });
 
@@ -156,6 +160,32 @@ const labelClass = 'text-sm font-medium text-club-navy';
             Hora de convocatoria
           </label>
           <input id="hora_convocatoria" name="hora_convocatoria" type="time" class={inputClass} />
+        </div>
+
+        <div class="flex flex-col gap-1">
+          <label for="ubicacion" class={labelClass}>
+            Nombre del pabellón
+          </label>
+          <input
+            id="ubicacion"
+            name="ubicacion"
+            type="text"
+            placeholder="Ej. Pabellón Deportivo Carlos Sastre, Valencia"
+            class={inputClass}
+          />
+        </div>
+
+        <div class="flex flex-col gap-1">
+          <label for="ubicacion_url" class={labelClass}>
+            Enlace de Google Maps (opcional)
+          </label>
+          <input
+            id="ubicacion_url"
+            name="ubicacion_url"
+            type="url"
+            placeholder="Si lo dejas en blanco, se busca por el nombre"
+            class={inputClass}
+          />
         </div>
 
         <div class="mt-2 flex gap-4">

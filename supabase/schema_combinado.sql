@@ -139,6 +139,8 @@ create table public.partidos (
   fecha_partido date,
   hora_inicio time,
   hora_convocatoria time,
+  ubicacion text,
+  ubicacion_url text,
   tipo public.tipo_partido not null default 'liga',
   jornada integer,
   fase_actual public.estado_partido not null default 'pre_partido',
