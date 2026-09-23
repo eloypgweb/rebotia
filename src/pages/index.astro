@@ -88,6 +88,17 @@ const { data: ultimo } = await Astro.locals.supabase
               </a>
             )}
           </div>
+
+          {proximo.fecha_partido && (
+            <div class="mt-4 text-center">
+              <a
+                href={`/partidos/${proximo.id}.ics`}
+                class="inline-flex items-center gap-1 rounded-lg border border-club-blue/40 px-3 py-1.5 text-sm font-medium text-club-navy transition-colors hover:bg-club-blue/10"
+              >
+                📅 Añadir al calendario
+              </a>
+            </div>
+          )}
         </div>
       </section>
     )
