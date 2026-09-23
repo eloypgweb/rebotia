@@ -11,8 +11,10 @@ export const GET: APIRoute = async ({ params, locals }) => {
     .eq('id', params.id)
     .single();
 
-  if (!partido || !partido.fecha_partido) {
-    return new Response('Este partido todavía no tiene fecha definida.', { status: 404 });
+  const hora = partido?.hora_convocatoria ?? partido?.hora_inicio;
+
+  if (!partido || !partido.fecha_partido || !hora) {
+    return new Response('Este partido todavía no tiene fecha y hora definidas.', { status: 404 });
   }
 
   const resumen = `${partido.local?.nombre ?? '¿?'} vs ${partido.visitante?.nombre ?? '¿?'}`;
@@ -31,7 +33,7 @@ export const GET: APIRoute = async ({ params, locals }) => {
     id: String(params.id),
     resumen,
     fecha: partido.fecha_partido,
-    hora: partido.hora_convocatoria ?? partido.hora_inicio ?? null,
+    hora,
     ubicacion: partido.ubicacion,
     descripcion: detalles.join('\n'),
   });

@@ -19,17 +19,6 @@ function formatearFechaHoraICS(fecha: Date): string {
   return `${fecha.getUTCFullYear()}${pad(fecha.getUTCMonth() + 1)}${pad(fecha.getUTCDate())}T${pad(fecha.getUTCHours())}${pad(fecha.getUTCMinutes())}00Z`;
 }
 
-function formatearFechaICS(fecha: string): string {
-  return fecha.replace(/-/g, '');
-}
-
-function sumarDiasICS(fecha: string, dias: number): string {
-  const referencia = new Date(`${fecha}T00:00:00Z`);
-  referencia.setUTCDate(referencia.getUTCDate() + dias);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${referencia.getUTCFullYear()}${pad(referencia.getUTCMonth() + 1)}${pad(referencia.getUTCDate())}`;
-}
-
 function escaparTexto(texto: string): string {
   return texto.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
 }
@@ -50,7 +39,7 @@ interface DatosEventoPartido {
   id: string;
   resumen: string;
   fecha: string;
-  hora: string | null;
+  hora: string;
   ubicacion: string | null;
   descripcion: string;
 }
@@ -58,18 +47,8 @@ interface DatosEventoPartido {
 export function generarIcsPartido(datos: DatosEventoPartido): string {
   const dtstamp = formatearFechaHoraICS(new Date());
 
-  let dtstartLinea: string;
-  let dtendLinea: string;
-
-  if (datos.hora) {
-    const inicio = aFechaHoraUtc(datos.fecha, datos.hora);
-    const fin = new Date(inicio.getTime() + 2 * 60 * 60 * 1000);
-    dtstartLinea = `DTSTART:${formatearFechaHoraICS(inicio)}`;
-    dtendLinea = `DTEND:${formatearFechaHoraICS(fin)}`;
-  } else {
-    dtstartLinea = `DTSTART;VALUE=DATE:${formatearFechaICS(datos.fecha)}`;
-    dtendLinea = `DTEND;VALUE=DATE:${sumarDiasICS(datos.fecha, 1)}`;
-  }
+  const inicio = aFechaHoraUtc(datos.fecha, datos.hora);
+  const fin = new Date(inicio.getTime() + 2 * 60 * 60 * 1000);
 
   const lineas = [
     'BEGIN:VCALENDAR',
@@ -79,8 +58,8 @@ export function generarIcsPartido(datos: DatosEventoPartido): string {
     'BEGIN:VEVENT',
     `UID:partido-${datos.id}@rebotia`,
     `DTSTAMP:${dtstamp}`,
-    dtstartLinea,
-    dtendLinea,
+    `DTSTART:${formatearFechaHoraICS(inicio)}`,
+    `DTEND:${formatearFechaHoraICS(fin)}`,
     `SUMMARY:${escaparTexto(datos.resumen)}`,
     ...(datos.ubicacion ? [`LOCATION:${escaparTexto(datos.ubicacion)}`] : []),
     `DESCRIPTION:${escaparTexto(datos.descripcion)}`,

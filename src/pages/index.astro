@@ -89,7 +89,7 @@ const { data: ultimo } = await Astro.locals.supabase
             )}
           </div>
 
-          {proximo.fecha_partido && (
+          {proximo.fecha_partido && (proximo.hora_convocatoria || proximo.hora_inicio) && (
             <div class="mt-4 text-center">
               <a
                 href={`/partidos/${proximo.id}.ics`}
