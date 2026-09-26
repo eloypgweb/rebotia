@@ -46,7 +46,7 @@ familias.
 ## Estadísticas
 
 ### Por jugadora (solo equipo propio — datos que también da la FBM)
-Minutos, puntos, tiros de 2 metidos, tiros de 3 metidos, tiros libres
+Tiempo jugado (MM:SS, guardado en segundos), puntos, tiros de 2 metidos, tiros de 3 metidos, tiros libres
 metidos/intentados, faltas cometidas.
 
 ### De equipo (propio Y rival — la FBM no las da)
@@ -61,7 +61,7 @@ Puntos, tiros de 2 y 3 metidos, tiros libres metidos/intentados, faltas.
 - `perfiles` (id, nombre, rol, avatar_url, created_at) — extiende auth.users
 - `equipos` (id, nombre, escudo_url, categoria, es_propio) — jugadoras solo
   se llevan del equipo propio; los rivales son solo para enfrentar partidos
-- `jugadoras` (id, equipo_id, nombre, dorsal, posicion) — siempre del
+- `jugadoras` (id, equipo_id, nombre, dorsal [texto, permite "00"], posicion) — siempre del
   equipo propio, sin selector de equipo en el formulario
 - `partidos` (id, equipo_local_id, equipo_visitante_id, fecha_partido,
   hora_inicio, hora_convocatoria, ubicacion, ubicacion_url, tipo, jornada,
@@ -70,7 +70,7 @@ Puntos, tiros de 2 y 3 metidos, tiros libres metidos/intentados, faltas.
   (se puede crear un partido sin horario aún definido)
 - `convocatorias` (partido_id, jugadora_id, estado ['convocada'|'lesionada'|
   'ausente'], titular, minutos_jugados)
-- `estadisticas_jugadora` (id, partido_id, jugadora_id, fase, minutos,
+- `estadisticas_jugadora` (id, partido_id, jugadora_id, fase, segundos,
   puntos, t2_metidos, t3_metidos, tl_metidos, tl_intentados, faltas,
   autor_id, created_at)
 - `estadisticas_equipo` (id, partido_id, fase, lado ['propio'|'rival'],

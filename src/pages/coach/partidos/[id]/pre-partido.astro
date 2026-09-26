@@ -1,5 +1,6 @@
 ---
 import Layout from '../../../../layouts/Layout.astro';
+import { compararDorsal } from '../../../../lib/dorsal';
 
 const { id } = Astro.params;
 const { user } = Astro.locals;
@@ -71,9 +72,10 @@ const { data: jugadoras } = propio
       .from('jugadoras')
       .select('id, nombre, dorsal')
       .eq('equipo_id', propio.id)
-      .order('dorsal', { ascending: true, nullsFirst: false })
       .order('nombre')
   : { data: null };
+
+jugadoras?.sort((a, b) => compararDorsal(a.dorsal, b.dorsal));
 
 const { data: convocatoriasExistentes } = await Astro.locals.supabase
   .from('convocatorias')

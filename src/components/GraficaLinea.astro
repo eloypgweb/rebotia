@@ -3,6 +3,7 @@ interface Punto {
   etiqueta: string;
   valor: number;
   detalle: string;
+  texto?: string;
 }
 
 interface Props {
@@ -86,7 +87,7 @@ const mostrarEtiqueta = (i: number) => datos.length <= 8 || i % pasoEtiquetas ==
               <circle
                 class="grafica-punto"
                 data-index={i}
-                data-valor={p.valor}
+                data-valor={p.texto ?? p.valor}
                 data-detalle={p.detalle}
                 cx={p.cx}
                 cy={p.cy}

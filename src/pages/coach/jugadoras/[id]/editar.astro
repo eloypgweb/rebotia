@@ -1,5 +1,6 @@
 ---
 import Layout from '../../../../layouts/Layout.astro';
+import { normalizarDorsal } from '../../../../lib/dorsal';
 
 if (Astro.locals.perfil?.rol !== 'admin') {
   return Astro.redirect('/coach/jugadoras');
@@ -19,8 +20,7 @@ const { data: propio } = await Astro.locals.supabase
 if (Astro.request.method === 'POST' && propio) {
   const formData = await Astro.request.formData();
   const nombre = formData.get('nombre')?.toString().trim();
-  const dorsalRaw = formData.get('dorsal')?.toString().trim();
-  const dorsal = dorsalRaw ? Number(dorsalRaw) : null;
+  const dorsal = normalizarDorsal(formData.get('dorsal')?.toString());
   const posicion = formData.get('posicion')?.toString().trim() || null;
 
   if (!nombre) {
@@ -74,7 +74,7 @@ const labelClass = 'text-sm font-medium text-club-navy';
 
     <div class="flex flex-col gap-1">
       <label for="dorsal" class={labelClass}>Dorsal</label>
-      <input id="dorsal" name="dorsal" type="number" min="0" value={jugadora.dorsal ?? ''} class={inputClass} />
+      <input id="dorsal" name="dorsal" type="text" inputmode="numeric" pattern="[0-9]{1,2}" maxlength="2" placeholder="Ej: 7 o 00" value={jugadora.dorsal ?? ''} class={inputClass} />
     </div>
 
     <div class="flex flex-col gap-1">

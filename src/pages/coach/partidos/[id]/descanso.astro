@@ -1,5 +1,7 @@
 ---
 import Layout from '../../../../layouts/Layout.astro';
+import { formatearTiempo, parsearTiempo } from '../../../../lib/tiempo';
+import { compararDorsal } from '../../../../lib/dorsal';
 
 const { id } = Astro.params;
 const { user } = Astro.locals;
@@ -19,6 +21,12 @@ if (Astro.request.method === 'POST') {
 
   if (intent === 'estadisticas') {
     const numero = (nombre: string) => Number(formData.get(nombre)?.toString() ?? '0') || 0;
+    const opcional = (nombre: string) => {
+      const texto = formData.get(nombre)?.toString().trim();
+      if (!texto) return null;
+      const valor = Number(texto);
+      return Number.isFinite(valor) && valor >= 0 ? valor : null;
+    };
 
     const { data: convocadas } = await Astro.locals.supabase
       .from('convocatorias')
@@ -35,7 +43,7 @@ if (Astro.request.method === 'POST') {
         partido_id: id,
         jugadora_id,
         fase: 'primera_parte' as const,
-        minutos: numero(`minutos_${jugadora_id}`),
+        segundos: parsearTiempo(formData.get(`minutos_${jugadora_id}`)?.toString()),
         puntos: t2 * 2 + t3 * 3 + tlMetidos,
         t2_metidos: t2,
         t3_metidos: t3,
@@ -60,10 +68,10 @@ if (Astro.request.method === 'POST') {
       tl_metidos: 0,
       tl_intentados: 0,
       faltas: 0,
-      rebotes_ofensivos: numero('propio_rebotes_ofensivos'),
-      rebotes_defensivos: numero('propio_rebotes_defensivos'),
-      perdidas: numero('propio_perdidas'),
-      robos: numero('propio_robos'),
+      rebotes_ofensivos: opcional('propio_rebotes_ofensivos'),
+      rebotes_defensivos: opcional('propio_rebotes_defensivos'),
+      perdidas: opcional('propio_perdidas'),
+      robos: opcional('propio_robos'),
       autor_id: user?.id,
     };
 
@@ -77,10 +85,10 @@ if (Astro.request.method === 'POST') {
       tl_metidos: tlMetidosRival,
       tl_intentados: numero('rival_tl_intentados'),
       faltas: numero('rival_faltas'),
-      rebotes_ofensivos: numero('rival_rebotes_ofensivos'),
-      rebotes_defensivos: numero('rival_rebotes_defensivos'),
-      perdidas: numero('rival_perdidas'),
-      robos: numero('rival_robos'),
+      rebotes_ofensivos: opcional('rival_rebotes_ofensivos'),
+      rebotes_defensivos: opcional('rival_rebotes_defensivos'),
+      perdidas: opcional('rival_perdidas'),
+      robos: opcional('rival_robos'),
       autor_id: user?.id,
     };
 
@@ -134,7 +142,7 @@ const { data: convocatoria } = await Astro.locals.supabase
 
 const jugadoras = (convocatoria ?? [])
   .map((c) => ({ id: c.jugadora_id, nombre: c.jugadora?.nombre ?? '', dorsal: c.jugadora?.dorsal ?? null }))
-  .sort((a, b) => (a.dorsal ?? Infinity) - (b.dorsal ?? Infinity));
+  .sort((a, b) => compararDorsal(a.dorsal, b.dorsal));
 
 const { data: statsExistentes } = await Astro.locals.supabase
   .from('estadisticas_jugadora')
@@ -164,6 +172,7 @@ const formateador = new Intl.DateTimeFormat('es-ES', { dateStyle: 'short', timeS
 
 const numInputClass =
   'w-16 rounded-lg border border-club-blue/40 px-2 py-1 text-center text-club-navy outline-none focus:border-club-blue focus:ring-2 focus:ring-club-blue/30';
+const tiempoInputClass = numInputClass.replace('w-16', 'w-20');
 const inputClass =
   'rounded-lg border border-club-blue/40 px-3 py-2 text-club-navy outline-none focus:border-club-blue focus:ring-2 focus:ring-club-blue/30';
 ---
@@ -225,11 +234,13 @@ const inputClass =
                       </td>
                       <td class="px-2 py-2">
                         <input
-                          type="number"
-                          min="0"
+                          type="text"
+                          inputmode="numeric"
+                          pattern="[0-9]{1,3}(:[0-5][0-9])?"
+                          placeholder="MM:SS"
                           name={`minutos_${jugadora.id}`}
-                          value={actual?.minutos ?? 0}
-                          class={numInputClass}
+                          value={formatearTiempo(actual?.segundos ?? 0)}
+                          class={tiempoInputClass}
                         />
                       </td>
                       <td class="px-2 py-2">
@@ -284,25 +295,29 @@ const inputClass =
             </table>
           </div>
 
-          <div class="mt-6 grid gap-6 sm:grid-cols-2">
+          <p class="mt-6 text-xs text-club-navy/50">
+            Rebotes, pérdidas y robos: si no tienes el dato, déjalo en blanco (se mostrará "—" y no contará como 0).
+          </p>
+
+          <div class="mt-2 grid gap-6 sm:grid-cols-2">
             <div>
               <h3 class="text-sm font-semibold text-club-navy">Nosotras</h3>
               <div class="mt-2 flex flex-col gap-2">
                 <label class="flex items-center justify-between gap-2 text-sm text-club-navy">
                   Rebotes ofensivos
-                  <input type="number" min="0" name="propio_rebotes_ofensivos" value={propioExistente?.rebotes_ofensivos ?? 0} class={numInputClass} />
+                  <input type="number" min="0" placeholder="—" name="propio_rebotes_ofensivos" value={propioExistente?.rebotes_ofensivos ?? ''} class={numInputClass} />
                 </label>
                 <label class="flex items-center justify-between gap-2 text-sm text-club-navy">
                   Rebotes defensivos
-                  <input type="number" min="0" name="propio_rebotes_defensivos" value={propioExistente?.rebotes_defensivos ?? 0} class={numInputClass} />
+                  <input type="number" min="0" placeholder="—" name="propio_rebotes_defensivos" value={propioExistente?.rebotes_defensivos ?? ''} class={numInputClass} />
                 </label>
                 <label class="flex items-center justify-between gap-2 text-sm text-club-navy">
                   Pérdidas
-                  <input type="number" min="0" name="propio_perdidas" value={propioExistente?.perdidas ?? 0} class={numInputClass} />
+                  <input type="number" min="0" placeholder="—" name="propio_perdidas" value={propioExistente?.perdidas ?? ''} class={numInputClass} />
                 </label>
                 <label class="flex items-center justify-between gap-2 text-sm text-club-navy">
                   Robos
-                  <input type="number" min="0" name="propio_robos" value={propioExistente?.robos ?? 0} class={numInputClass} />
+                  <input type="number" min="0" placeholder="—" name="propio_robos" value={propioExistente?.robos ?? ''} class={numInputClass} />
                 </label>
               </div>
             </div>
@@ -332,19 +347,19 @@ const inputClass =
                 </label>
                 <label class="flex items-center justify-between gap-2 text-sm text-club-navy">
                   Rebotes ofensivos
-                  <input type="number" min="0" name="rival_rebotes_ofensivos" value={rivalExistente?.rebotes_ofensivos ?? 0} class={numInputClass} />
+                  <input type="number" min="0" placeholder="—" name="rival_rebotes_ofensivos" value={rivalExistente?.rebotes_ofensivos ?? ''} class={numInputClass} />
                 </label>
                 <label class="flex items-center justify-between gap-2 text-sm text-club-navy">
                   Rebotes defensivos
-                  <input type="number" min="0" name="rival_rebotes_defensivos" value={rivalExistente?.rebotes_defensivos ?? 0} class={numInputClass} />
+                  <input type="number" min="0" placeholder="—" name="rival_rebotes_defensivos" value={rivalExistente?.rebotes_defensivos ?? ''} class={numInputClass} />
                 </label>
                 <label class="flex items-center justify-between gap-2 text-sm text-club-navy">
                   Pérdidas
-                  <input type="number" min="0" name="rival_perdidas" value={rivalExistente?.perdidas ?? 0} class={numInputClass} />
+                  <input type="number" min="0" placeholder="—" name="rival_perdidas" value={rivalExistente?.perdidas ?? ''} class={numInputClass} />
                 </label>
                 <label class="flex items-center justify-between gap-2 text-sm text-club-navy">
                   Robos
-                  <input type="number" min="0" name="rival_robos" value={rivalExistente?.robos ?? 0} class={numInputClass} />
+                  <input type="number" min="0" placeholder="—" name="rival_robos" value={rivalExistente?.robos ?? ''} class={numInputClass} />
                 </label>
               </div>
             </div>

@@ -95,7 +95,7 @@ create table public.jugadoras (
   id uuid primary key default gen_random_uuid(),
   equipo_id uuid not null references public.equipos (id) on delete cascade,
   nombre text not null,
-  dorsal integer,
+  dorsal text,
   posicion text
 );
 
@@ -236,7 +236,7 @@ create table public.estadisticas_jugadora (
   partido_id uuid not null references public.partidos (id) on delete cascade,
   jugadora_id uuid not null references public.jugadoras (id) on delete cascade,
   fase public.fase_juego not null,
-  minutos integer not null default 0,
+  segundos integer not null default 0,
   puntos integer not null default 0,
   t2_metidos integer not null default 0,
   t3_metidos integer not null default 0,
@@ -284,10 +284,10 @@ create table public.estadisticas_equipo (
   tl_metidos integer not null default 0,
   tl_intentados integer not null default 0,
   faltas integer not null default 0,
-  rebotes_ofensivos integer not null default 0,
-  rebotes_defensivos integer not null default 0,
-  perdidas integer not null default 0,
-  robos integer not null default 0,
+  rebotes_ofensivos integer,
+  rebotes_defensivos integer,
+  perdidas integer,
+  robos integer,
   autor_id uuid references public.perfiles (id),
   created_at timestamptz not null default now()
 );
