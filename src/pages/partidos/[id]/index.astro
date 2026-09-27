@@ -54,13 +54,16 @@ let rivalEquipoStats: {
 let propioTotales = { puntos: 0, t2: 0, t3: 0, tlMetidos: 0, tlIntentados: 0, faltas: 0 };
 
 if (jugado) {
-  const { data: statsJugadorasData } = await Astro.locals.supabase
-    .from('estadisticas_jugadora')
-    .select(
-      'segundos, puntos, t2_metidos, t3_metidos, tl_metidos, tl_intentados, faltas, jugadora:jugadora_id(nombre, dorsal)',
-    )
-    .eq('partido_id', id)
-    .eq('fase', 'final');
+  const [{ data: statsJugadorasData }, { data: statsEquipo }] = await Promise.all([
+    Astro.locals.supabase
+      .from('estadisticas_jugadora')
+      .select(
+        'segundos, puntos, t2_metidos, t3_metidos, tl_metidos, tl_intentados, faltas, jugadora:jugadora_id(nombre, dorsal)',
+      )
+      .eq('partido_id', id)
+      .eq('fase', 'final'),
+    Astro.locals.supabase.from('estadisticas_equipo').select('*').eq('partido_id', id).eq('fase', 'final'),
+  ]);
 
   statsJugadoras = (statsJugadorasData ?? []).sort((a, b) => compararDorsal(a.jugadora?.dorsal ?? null, b.jugadora?.dorsal ?? null));
 
@@ -75,12 +78,6 @@ if (jugado) {
     }),
     { puntos: 0, t2: 0, t3: 0, tlMetidos: 0, tlIntentados: 0, faltas: 0 },
   );
-
-  const { data: statsEquipo } = await Astro.locals.supabase
-    .from('estadisticas_equipo')
-    .select('*')
-    .eq('partido_id', id)
-    .eq('fase', 'final');
 
   propioEquipoStats = statsEquipo?.find((s) => s.lado === 'propio') ?? null;
   rivalEquipoStats = statsEquipo?.find((s) => s.lado === 'rival') ?? null;

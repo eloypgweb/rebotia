@@ -9,18 +9,15 @@ const { id } = Astro.params;
 
 let error: string | null = null;
 
-const { data: propio } = await Astro.locals.supabase
-  .from('equipos')
-  .select('id, nombre')
-  .eq('es_propio', true)
-  .limit(1)
-  .maybeSingle();
+const [{ data: propio }, { data: rivales }, { data: partido }] = await Promise.all([
+  Astro.locals.supabase.from('equipos').select('id, nombre').eq('es_propio', true).limit(1).maybeSingle(),
+  Astro.locals.supabase.from('equipos').select('id, nombre').eq('es_propio', false).order('nombre'),
+  Astro.locals.supabase.from('partidos').select('*, local:equipo_local_id(es_propio)').eq('id', id).single(),
+]);
 
-const { data: rivales } = await Astro.locals.supabase
-  .from('equipos')
-  .select('id, nombre')
-  .eq('es_propio', false)
-  .order('nombre');
+if (!partido) {
+  return Astro.redirect('/coach/partidos');
+}
 
 if (Astro.request.method === 'POST' && propio) {
   const formData = await Astro.request.formData();
@@ -62,16 +59,6 @@ if (Astro.request.method === 'POST' && propio) {
       return Astro.redirect('/coach/partidos');
     }
   }
-}
-
-const { data: partido } = await Astro.locals.supabase
-  .from('partidos')
-  .select('*, local:equipo_local_id(es_propio)')
-  .eq('id', id)
-  .single();
-
-if (!partido) {
-  return Astro.redirect('/coach/partidos');
 }
 
 const rivalActualId = partido.local?.es_propio ? partido.equipo_visitante_id : partido.equipo_local_id;

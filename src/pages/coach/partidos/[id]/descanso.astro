@@ -134,39 +134,31 @@ if (Astro.request.method === 'POST') {
   }
 }
 
-const { data: convocatoria } = await Astro.locals.supabase
-  .from('convocatorias')
-  .select('jugadora_id, jugadora:jugadora_id(nombre, dorsal)')
-  .eq('partido_id', id)
-  .eq('estado', 'convocada');
+const [{ data: convocatoria }, { data: statsExistentes }, { data: equipoExistente }, { data: comentarios }] =
+  await Promise.all([
+    Astro.locals.supabase
+      .from('convocatorias')
+      .select('jugadora_id, jugadora:jugadora_id(nombre, dorsal)')
+      .eq('partido_id', id)
+      .eq('estado', 'convocada'),
+    Astro.locals.supabase.from('estadisticas_jugadora').select('*').eq('partido_id', id).eq('fase', 'primera_parte'),
+    Astro.locals.supabase.from('estadisticas_equipo').select('*').eq('partido_id', id).eq('fase', 'primera_parte'),
+    Astro.locals.supabase
+      .from('comentarios')
+      .select('id, texto, created_at, autor:autor_id(nombre)')
+      .eq('partido_id', id)
+      .eq('fase', 'primera_parte')
+      .order('created_at', { ascending: false }),
+  ]);
 
 const jugadoras = (convocatoria ?? [])
   .map((c) => ({ id: c.jugadora_id, nombre: c.jugadora?.nombre ?? '', dorsal: c.jugadora?.dorsal ?? null }))
   .sort((a, b) => compararDorsal(a.dorsal, b.dorsal));
 
-const { data: statsExistentes } = await Astro.locals.supabase
-  .from('estadisticas_jugadora')
-  .select('*')
-  .eq('partido_id', id)
-  .eq('fase', 'primera_parte');
-
 const statsPorJugadora = new Map((statsExistentes ?? []).map((s) => [s.jugadora_id, s]));
-
-const { data: equipoExistente } = await Astro.locals.supabase
-  .from('estadisticas_equipo')
-  .select('*')
-  .eq('partido_id', id)
-  .eq('fase', 'primera_parte');
 
 const propioExistente = equipoExistente?.find((e) => e.lado === 'propio');
 const rivalExistente = equipoExistente?.find((e) => e.lado === 'rival');
-
-const { data: comentarios } = await Astro.locals.supabase
-  .from('comentarios')
-  .select('id, texto, created_at, autor:autor_id(nombre)')
-  .eq('partido_id', id)
-  .eq('fase', 'primera_parte')
-  .order('created_at', { ascending: false });
 
 const formateador = new Intl.DateTimeFormat('es-ES', { dateStyle: 'short', timeStyle: 'short' });
 

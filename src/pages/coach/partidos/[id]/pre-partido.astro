@@ -60,12 +60,16 @@ if (Astro.request.method === 'POST') {
   }
 }
 
-const { data: propio } = await Astro.locals.supabase
-  .from('equipos')
-  .select('id, nombre')
-  .eq('es_propio', true)
-  .limit(1)
-  .maybeSingle();
+const [{ data: propio }, { data: convocatoriasExistentes }, { data: comentarios }] = await Promise.all([
+  Astro.locals.supabase.from('equipos').select('id, nombre').eq('es_propio', true).limit(1).maybeSingle(),
+  Astro.locals.supabase.from('convocatorias').select('jugadora_id, estado, titular').eq('partido_id', id),
+  Astro.locals.supabase
+    .from('comentarios')
+    .select('id, texto, created_at, autor:autor_id(nombre)')
+    .eq('partido_id', id)
+    .eq('fase', 'pre_partido')
+    .order('created_at', { ascending: false }),
+]);
 
 const { data: jugadoras } = propio
   ? await Astro.locals.supabase
@@ -77,19 +81,7 @@ const { data: jugadoras } = propio
 
 jugadoras?.sort((a, b) => compararDorsal(a.dorsal, b.dorsal));
 
-const { data: convocatoriasExistentes } = await Astro.locals.supabase
-  .from('convocatorias')
-  .select('jugadora_id, estado, titular')
-  .eq('partido_id', id);
-
 const estadoPorJugadora = new Map((convocatoriasExistentes ?? []).map((c) => [c.jugadora_id, c]));
-
-const { data: comentarios } = await Astro.locals.supabase
-  .from('comentarios')
-  .select('id, texto, created_at, autor:autor_id(nombre)')
-  .eq('partido_id', id)
-  .eq('fase', 'pre_partido')
-  .order('created_at', { ascending: false });
 
 const formateador = new Intl.DateTimeFormat('es-ES', { dateStyle: 'short', timeStyle: 'short' });
 

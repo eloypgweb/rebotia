@@ -6,19 +6,20 @@ import { formatearTiempo } from '../../../../lib/tiempo';
 
 const { id } = Astro.params;
 
-const { data: jugadora } = await Astro.locals.supabase.from('jugadoras').select('*').eq('id', id).single();
+const [{ data: jugadora }, { data: filas }] = await Promise.all([
+  Astro.locals.supabase.from('jugadoras').select('*').eq('id', id).single(),
+  Astro.locals.supabase
+    .from('estadisticas_jugadora')
+    .select(
+      'segundos, puntos, t2_metidos, t3_metidos, tl_metidos, tl_intentados, faltas, partido:partido_id(fecha_partido, tipo, jornada, fase_actual, local:equipo_local_id(nombre, es_propio), visitante:equipo_visitante_id(nombre, es_propio))',
+    )
+    .eq('jugadora_id', id)
+    .eq('fase', 'final'),
+]);
 
 if (!jugadora) {
   return Astro.redirect('/coach/jugadoras');
 }
-
-const { data: filas } = await Astro.locals.supabase
-  .from('estadisticas_jugadora')
-  .select(
-    'segundos, puntos, t2_metidos, t3_metidos, tl_metidos, tl_intentados, faltas, partido:partido_id(fecha_partido, tipo, jornada, fase_actual, local:equipo_local_id(nombre, es_propio), visitante:equipo_visitante_id(nombre, es_propio))',
-  )
-  .eq('jugadora_id', id)
-  .eq('fase', 'final');
 
 // Solo cuentan los partidos de liga ya finalizados y con fecha (los amistosos
 // no entran en la progresión de temporada).

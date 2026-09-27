@@ -10,21 +10,22 @@ const puedeVerCoach = rol === 'admin' || rol === 'editor';
 const equiposSelect =
   '*, local:equipo_local_id(nombre, escudo_url), visitante:equipo_visitante_id(nombre, escudo_url)';
 
-const { data: proximo } = await Astro.locals.supabase
-  .from('partidos')
-  .select(equiposSelect)
-  .neq('fase_actual', 'finalizado')
-  .order('fecha_partido', { ascending: true, nullsFirst: false })
-  .limit(1)
-  .maybeSingle();
-
-const { data: ultimo } = await Astro.locals.supabase
-  .from('partidos')
-  .select(equiposSelect)
-  .eq('fase_actual', 'finalizado')
-  .order('fecha_partido', { ascending: false, nullsFirst: false })
-  .limit(1)
-  .maybeSingle();
+const [{ data: proximo }, { data: ultimo }] = await Promise.all([
+  Astro.locals.supabase
+    .from('partidos')
+    .select(equiposSelect)
+    .neq('fase_actual', 'finalizado')
+    .order('fecha_partido', { ascending: true, nullsFirst: false })
+    .limit(1)
+    .maybeSingle(),
+  Astro.locals.supabase
+    .from('partidos')
+    .select(equiposSelect)
+    .eq('fase_actual', 'finalizado')
+    .order('fecha_partido', { ascending: false, nullsFirst: false })
+    .limit(1)
+    .maybeSingle(),
+]);
 
 ---
 
