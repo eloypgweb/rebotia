@@ -2,8 +2,6 @@ import type { APIRoute } from 'astro';
 
 const FASE_A_RUTA: Record<string, string> = {
   pre_partido: 'pre-partido',
-  primera_parte: 'descanso',
-  segunda_parte: 'descanso',
   final: 'post-partido',
 };
 

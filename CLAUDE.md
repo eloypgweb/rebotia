@@ -39,9 +39,12 @@ familias.
    más tarde)
 2. **Pre-Partido**: convocatoria (marcar convocada/lesionada/ausente y
    titular) y comentarios previos
-3. **Al descanso**: estadísticas acumuladas hasta el descanso + comentarios
-4. **Post-Partido**: estadísticas finales (acumulado de todo el partido),
+3. **Post-Partido**: estadísticas finales (acumulado de todo el partido),
    marca el partido como finalizado y calcula el marcador, + valoración
+
+("Al descanso" existió como fase intermedia pero no se usa: la página se
+eliminó. El enum de la BD conserva los valores `primera_parte`/`descanso`
+sin usarlos, para no complicar una migración innecesaria.)
 
 ## Estadísticas
 

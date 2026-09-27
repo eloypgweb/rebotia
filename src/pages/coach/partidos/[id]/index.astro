@@ -21,11 +21,6 @@ if (!partido) {
 const fases = [
   { href: `/coach/partidos/${id}/pre-partido`, titulo: 'Pre-Partido', descripcion: 'Convocatoria y notas previas.' },
   {
-    href: `/coach/partidos/${id}/descanso`,
-    titulo: 'Al descanso',
-    descripcion: 'Estadísticas de la 1ª parte y comentarios.',
-  },
-  {
     href: `/coach/partidos/${id}/post-partido`,
     titulo: 'Post-Partido',
     descripcion: 'Estadísticas completas, resultado final y valoración.',
@@ -81,7 +76,7 @@ const fases = [
     )
   }
 
-  <div class="mt-6 grid gap-4 sm:grid-cols-3">
+  <div class="mt-6 grid gap-4 sm:grid-cols-2">
     {
       fases.map((fase) => (
         <a
