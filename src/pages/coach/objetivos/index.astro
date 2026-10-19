@@ -9,16 +9,26 @@ let error: string | null = null;
 if (Astro.request.method === 'POST') {
   const formData = await Astro.request.formData();
 
-  const { data: actuales } = await Astro.locals.supabase.from('objetivos').select('id, valor_actual');
+  const { data: actuales } = await Astro.locals.supabase
+    .from('objetivos')
+    .select('id, categoria, titulo, descripcion, orden, valor_actual');
 
   const cambios = (actuales ?? []).map((objetivo) => {
     const enTrabajo = formData.get(`en_trabajo_${objetivo.id}`) === 'on';
     const valorRaw = formData.get(`valor_${objetivo.id}`)?.toString();
     const valorActual = enTrabajo && valorRaw ? Number(valorRaw) : null;
-    return { id: objetivo.id, en_trabajo: enTrabajo, valor_actual: valorActual, valorAnterior: objetivo.valor_actual };
+    return { ...objetivo, en_trabajo: enTrabajo, valor_actual: valorActual, valorAnterior: objetivo.valor_actual };
   });
 
-  const filasUpsert = cambios.map(({ id, en_trabajo, valor_actual }) => ({ id, en_trabajo, valor_actual }));
+  const filasUpsert = cambios.map(({ id, categoria, titulo, descripcion, orden, en_trabajo, valor_actual }) => ({
+    id,
+    categoria,
+    titulo,
+    descripcion,
+    orden,
+    en_trabajo,
+    valor_actual,
+  }));
 
   const { error: errorUpsert } = await Astro.locals.supabase
     .from('objetivos')
