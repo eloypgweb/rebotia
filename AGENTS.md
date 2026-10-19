@@ -19,7 +19,9 @@ familias.
   creación/edición/borrado de partidos, y todo lo de editor.
 - **editor**: ayudantes + preparador físico. Solo pueden registrar
   convocatoria, estadísticas y comentarios en partidos ya creados por el
-  admin — no pueden crear ni editar equipos, jugadoras ni partidos.
+  admin — no pueden crear ni editar equipos, jugadoras ni partidos. Sí
+  pueden marcar y valorar objetivos de entrenamiento (crear/editar/borrar
+  el catálogo de objetivos es solo admin).
 - **viewer**: familias y jugadoras. Solo lectura, sin login (acceso público
   al calendario y a las fichas de partido), no pueden crear ni modificar
   nada.
@@ -27,8 +29,10 @@ familias.
 ## Estructura de navegación
 - **Sección "Coach"** (privada, admin + editor): gestión de equipos rivales
   y plantilla de jugadoras (solo admin), creación/edición/borrado de
-  partidos (solo admin), y registro de convocatoria/estadísticas/
-  comentarios en las 3 fases de cada partido (admin + editor).
+  partidos (solo admin), registro de convocatoria/estadísticas/comentarios
+  en las fases de cada partido (admin + editor), y catálogo de objetivos de
+  entrenamiento con su seguimiento (admin + editor; el catálogo en sí solo
+  lo edita admin).
 - **Sección "Calendario de partidos"** (pública, sin login): próximos
   partidos y partidos jugados, ficha de partido con estadísticas finales
   por jugadora y de equipo (propio vs. rival).
@@ -82,6 +86,14 @@ Puntos, tiros de 2 y 3 metidos, tiros libres metidos/intentados, faltas.
   estadisticas_jugadora], rebotes_ofensivos, rebotes_defensivos, perdidas,
   robos [estos sí en ambos lados], autor_id, created_at)
 - `comentarios` (id, partido_id, fase, autor_id, texto, created_at)
+- `objetivos` (id, categoria, titulo, descripcion, orden, en_trabajo,
+  valor_actual [1-5, null si en_trabajo es false], creado_por, created_at)
+  — catálogo de objetivos de entrenamiento que da el club, agrupados por
+  categoría; `en_trabajo` y `valor_actual` son el estado actual (switch +
+  escala), no histórico
+- `objetivos_valoraciones` (id, objetivo_id, valor [1-5], autor_id,
+  created_at) — histórico append-only: se añade una fila cada vez que
+  cambia el valor de un objetivo (apagar el switch no borra el historial)
 
 Toda estadística y comentario debe guardar autoría (`autor_id`) y
 `created_at`, para saber quién escribió cada dato y cuándo.
@@ -92,7 +104,11 @@ Toda estadística y comentario debe guardar autoría (`autor_id`) y
 - Gestión por temporadas
 - Perfil histórico de cada rival
 - Exportar resumen de partido en PDF
-- Estadísticas acumuladas de temporada por jugadora
+- Planificador semanal de entrenamientos (fase 2 de Objetivos): plantilla
+  recurrente de sesiones (día, pabellón, franjas de pista/físico) que se
+  reutiliza cada semana con opción de editar puntualmente una semana
+  concreta; cada sesión referencia objetivos del catálogo ya construido
+  más una nota libre. Solo Coach, sin nada público.
 
 ## Filosofía de diseño
 Minimizar fricción durante el partido: registro rápido tipo formulario de
