@@ -55,7 +55,7 @@ sin usarlos, para no complicar una migración innecesaria.)
 
 ### Por jugadora (solo equipo propio — datos que también da la FBM)
 Tiempo jugado (MM:SS, guardado en segundos), puntos, tiros de 2 metidos, tiros de 3 metidos, tiros libres
-metidos/intentados, faltas cometidas.SSC
+metidos/intentados, faltas cometidas.
 
 ### De equipo (propio Y rival — la FBM no las da)
 Rebotes ofensivos, rebotes defensivos, pérdidas, robos.
@@ -95,21 +95,33 @@ Puntos, tiros de 2 y 3 metidos, tiros libres metidos/intentados, faltas.
 - `objetivos_valoraciones` (id, objetivo_id, valor [1-5], autor_id,
   created_at) — histórico append-only: se añade una fila cada vez que
   cambia el valor de un objetivo (apagar el switch no borra el historial)
-- `sesiones_entrenamiento` (id, fecha [única], contenido [texto libre],
-  autor_id, created_at) — un entrenamiento por día, planificado como texto
-  libre de momento (sin franjas horarias, objetivos ni dibujos todavía:
-  eso es la fase siguiente, deliberadamente aplazada hasta ver uso real).
-  Se ve y edita desde `/coach/entrenamientos` (vista semanal navegable con
-  `?inicio=<lunes ISO>`) y `/coach/entrenamientos/<fecha ISO>` (un día).
-  Solo se entrena martes/jueves/viernes (`DIAS_ENTRENO` en `lib/semana.ts`);
-  cualquier otra fecha redirige. Cada sesión tiene un número correlativo
-  calculado (no guardado en BD) a partir de un ancla fija: el martes 20 de
-  octubre de 2026 es la sesión 29 (`numeroSesion()` en `lib/semana.ts`).
+- `sesiones_entrenamiento` (id, fecha [única], contenido [notas generales,
+  texto libre], intensidad, autor_id, created_at) — un entrenamiento por
+  día. Se ve y edita desde `/coach/entrenamientos` (vista semanal
+  navegable con `?inicio=<lunes ISO>`) y `/coach/entrenamientos/<fecha
+  ISO>` (un día). Solo se entrena martes/jueves/viernes (`DIAS_ENTRENO`
+  en `lib/semana.ts`); cualquier otra fecha redirige. Cada sesión tiene
+  un número correlativo calculado (no guardado en BD) a partir de un
+  ancla fija: el martes 20 de octubre de 2026 es la sesión 29
+  (`numeroSesion()` en `lib/semana.ts`).
 - `sesion_objetivos` (fecha, objetivo_id) — qué objetivos del catálogo se
   trabajan en una sesión concreta (no por semana completa, por día). Se
   marca con checkboxes agrupados por categoría en la propia página de la
-  sesión, junto al plan de texto libre; se guarda reemplazando todo el
-  conjunto de esa fecha de golpe (borra e inserta), no por diferencias.
+  sesión; se guarda reemplazando todo el conjunto de esa fecha de golpe
+  (borra e inserta), no por diferencias.
+- `sesiones_entrenamiento.intensidad` (1-5, opcional) — única parte
+  editable de la cabecera de una sesión. El resto de la cabecera (horario
+  de pista, pabellón, duración, nº de sesión) no se guarda en BD: se
+  calcula a partir de un horario fijo por día de la semana
+  (`HORARIO_POR_DIA` en `lib/semana.ts`) — martes/jueves/viernes, cada uno
+  con su pabellón y horario de pista. Si ese horario cambia de verdad en
+  la realidad, se cambia ahí, no desde la app.
+- `ejercicios_sesion` (id, fecha, titulo, detalle, duracion_minutos,
+  orden) — lista plana de ejercicios de una sesión (sin agrupar por
+  franjas pista/físico — se decidió no complicarlo así). `detalle` es
+  texto libre para normas/variantes. Sin fotos ni diagramas todavía
+  (aplazado: de momento solo texto en `detalle`). Se guarda igual que
+  `sesion_objetivos`: borra todo lo de esa fecha e inserta de nuevo.
 
 Toda estadística y comentario debe guardar autoría (`autor_id`) y
 `created_at`, para saber quién escribió cada dato y cuándo.
@@ -120,13 +132,16 @@ Toda estadística y comentario debe guardar autoría (`autor_id`) y
 - Gestión por temporadas
 - Perfil histórico de cada rival
 - Exportar resumen de partido en PDF
-- Estructurar el contenido de `sesiones_entrenamiento` más allá del texto
-  libre: franjas horarias con duración, ejercicios por franja, y
-  dibujos/diagramas (la selección de objetivos por sesión ya está hecha,
-  vía `sesion_objetivos`). Se aplazó a propósito hasta tener uso real.
-- Plantilla recurrente de entrenamientos (día de la semana fijo, pabellón,
-  franjas tipo) de la que nacería cada semana — solo si al usar el
-  planificador día a día resulta que la mayoría de semanas se repite.
+- Diagramas/imágenes por ejercicio (`ejercicios_sesion`): adjuntar una
+  foto/captura en vez de solo texto en `detalle`. Se decidió que sea
+  subir una imagen (reutilizando Supabase Storage), no un editor de
+  dibujo interactivo — pero ojo, ya hay un bug sin resolver justo en
+  Storage (ver "Pendiente / conocido roto"), probar con cuidado.
+- Plantilla recurrente de entrenamientos (horario fijo por día de la
+  semana) — ya existe como constante en código (`HORARIO_POR_DIA` en
+  `lib/semana.ts`), no como algo configurable desde la app. Solo haría
+  falta una pantalla de administración si ese horario empezara a cambiar
+  a menudo.
 
 ## Filosofía de diseño
 Minimizar fricción durante el partido: registro rápido tipo formulario de

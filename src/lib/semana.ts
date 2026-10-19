@@ -60,3 +60,41 @@ export function numeroSesion(fechaISO: string): number {
 
   return numero;
 }
+
+interface HorarioDia {
+  pabellon: string;
+  pabellonUrl?: string;
+  horaInicioPista: string;
+  horaFinPista: string;
+}
+
+// Horario fijo de la "pista" por día de entrenamiento. No es editable desde
+// la app: si cambia de verdad (otro pabellón, otro horario), se cambia aquí.
+const HORARIO_POR_DIA: Record<number, HorarioDia> = {
+  2: {
+    pabellon: 'Pabellón Deportivo Carlos Sastre',
+    pabellonUrl: 'https://maps.app.goo.gl/SSH4mpwd8vMgTd526',
+    horaInicioPista: '18:15',
+    horaFinPista: '19:45',
+  },
+  4: {
+    pabellon: 'Colegio Legamar',
+    horaInicioPista: '18:00',
+    horaFinPista: '19:15',
+  },
+  5: {
+    pabellon: 'Pabellón La Fortuna',
+    horaInicioPista: '19:30',
+    horaFinPista: '20:30',
+  },
+};
+
+export function horarioDeFecha(fecha: Date): HorarioDia | null {
+  return HORARIO_POR_DIA[fecha.getDay()] ?? null;
+}
+
+export function duracionMinutos(horaInicio: string, horaFin: string): number {
+  const [h1, m1] = horaInicio.split(':').map(Number);
+  const [h2, m2] = horaFin.split(':').map(Number);
+  return h2 * 60 + m2 - (h1 * 60 + m1);
+}

@@ -11,7 +11,7 @@ const diasSemana = Array.from({ length: 7 }, (_, i) => sumarDias(lunes, i));
 const diasEntreno = diasSemana.filter(esDiaEntreno);
 const diasISO = diasEntreno.map(aFechaISO);
 
-const [{ data: sesiones }, { data: objetivosSemana }] = await Promise.all([
+const [{ data: sesiones }, { data: objetivosSemana }, { data: ejerciciosSemana }] = await Promise.all([
   Astro.locals.supabase
     .from('sesiones_entrenamiento')
     .select('fecha, contenido')
@@ -22,9 +22,15 @@ const [{ data: sesiones }, { data: objetivosSemana }] = await Promise.all([
     .select('fecha, objetivo:objetivo_id(titulo, categoria)')
     .gte('fecha', aFechaISO(lunes))
     .lte('fecha', aFechaISO(sumarDias(lunes, 6))),
+  Astro.locals.supabase
+    .from('ejercicios_sesion')
+    .select('fecha')
+    .gte('fecha', aFechaISO(lunes))
+    .lte('fecha', aFechaISO(sumarDias(lunes, 6))),
 ]);
 
 const sesionPorFecha = new Map((sesiones ?? []).map((s) => [s.fecha, s]));
+const fechasConEjercicios = new Set((ejerciciosSemana ?? []).map((e) => e.fecha));
 
 // fecha -> categoria -> [titulos]
 const objetivosPorFechaYCategoria = new Map<string, Map<string, string[]>>();
@@ -74,7 +80,7 @@ const esSemanaActual = aFechaISO(lunes) === aFechaISO(lunesDeFecha(new Date()));
     {
       diasISO.map((iso) => {
         const sesion = sesionPorFecha.get(iso);
-        const tienePlan = !!sesion?.contenido?.trim();
+        const tienePlan = !!sesion?.contenido?.trim() || fechasConEjercicios.has(iso);
         const porCategoria = objetivosPorFechaYCategoria.get(iso);
         const nombreDia = NOMBRES_DIA[(fechaDesdeISO(iso).getDay() + 6) % 7];
         return (
