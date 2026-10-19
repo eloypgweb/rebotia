@@ -107,10 +107,10 @@ for (const objetivo of objetivos ?? []) {
             <div class="divide-y divide-club-blue/20 border-t border-club-blue/20">
               {categoria.objetivos!.map((objetivo) => (
                 <div
-                  class="objetivo-fila flex flex-wrap items-center justify-between gap-3 px-6 py-4"
+                  class="objetivo-fila flex flex-col gap-3 px-6 py-4 sm:flex-row sm:items-center sm:justify-between"
                   data-objetivo-id={objetivo.id}
                 >
-                  <div>
+                  <div class="min-w-0">
                     <p class="font-medium text-club-navy">{objetivo.titulo}</p>
                     {
                       esAdmin && (
@@ -132,7 +132,7 @@ for (const objetivo of objetivos ?? []) {
                     }
                   </div>
 
-                  <div class="flex items-center gap-4">
+                  <div class="flex shrink-0 items-center justify-end gap-4">
                     <div class="valor-selector flex items-center gap-1" hidden>
                       {[1, 2, 3, 4, 5].map((n) => (
                         <label class="valor-opcion cursor-pointer">
