@@ -30,9 +30,10 @@ familias.
 - **Sección "Coach"** (privada, admin + editor): gestión de equipos rivales
   y plantilla de jugadoras (solo admin), creación/edición/borrado de
   partidos (solo admin), registro de convocatoria/estadísticas/comentarios
-  en las fases de cada partido (admin + editor), y catálogo de objetivos de
+  en las fases de cada partido (admin + editor), catálogo de objetivos de
   entrenamiento con su seguimiento (admin + editor; el catálogo en sí solo
-  lo edita admin).
+  lo edita admin), y planificador de entrenamientos por día (admin +
+  editor).
 - **Sección "Calendario de partidos"** (pública, sin login): próximos
   partidos y partidos jugados, ficha de partido con estadísticas finales
   por jugadora y de equipo (propio vs. rival).
@@ -94,6 +95,21 @@ Puntos, tiros de 2 y 3 metidos, tiros libres metidos/intentados, faltas.
 - `objetivos_valoraciones` (id, objetivo_id, valor [1-5], autor_id,
   created_at) — histórico append-only: se añade una fila cada vez que
   cambia el valor de un objetivo (apagar el switch no borra el historial)
+- `sesiones_entrenamiento` (id, fecha [única], contenido [texto libre],
+  autor_id, created_at) — un entrenamiento por día, planificado como texto
+  libre de momento (sin franjas horarias, objetivos ni dibujos todavía:
+  eso es la fase siguiente, deliberadamente aplazada hasta ver uso real).
+  Se ve y edita desde `/coach/entrenamientos` (vista semanal navegable con
+  `?inicio=<lunes ISO>`) y `/coach/entrenamientos/<fecha ISO>` (un día).
+  Solo se entrena martes/jueves/viernes (`DIAS_ENTRENO` en `lib/semana.ts`);
+  cualquier otra fecha redirige. Cada sesión tiene un número correlativo
+  calculado (no guardado en BD) a partir de un ancla fija: el martes 20 de
+  octubre de 2026 es la sesión 29 (`numeroSesion()` en `lib/semana.ts`).
+- `sesion_objetivos` (fecha, objetivo_id) — qué objetivos del catálogo se
+  trabajan en una sesión concreta (no por semana completa, por día). Se
+  marca con checkboxes agrupados por categoría en la propia página de la
+  sesión, junto al plan de texto libre; se guarda reemplazando todo el
+  conjunto de esa fecha de golpe (borra e inserta), no por diferencias.
 
 Toda estadística y comentario debe guardar autoría (`autor_id`) y
 `created_at`, para saber quién escribió cada dato y cuándo.
@@ -104,11 +120,13 @@ Toda estadística y comentario debe guardar autoría (`autor_id`) y
 - Gestión por temporadas
 - Perfil histórico de cada rival
 - Exportar resumen de partido en PDF
-- Planificador semanal de entrenamientos (fase 2 de Objetivos): plantilla
-  recurrente de sesiones (día, pabellón, franjas de pista/físico) que se
-  reutiliza cada semana con opción de editar puntualmente una semana
-  concreta; cada sesión referencia objetivos del catálogo ya construido
-  más una nota libre. Solo Coach, sin nada público.
+- Estructurar el contenido de `sesiones_entrenamiento` más allá del texto
+  libre: franjas horarias con duración, ejercicios por franja, y
+  dibujos/diagramas (la selección de objetivos por sesión ya está hecha,
+  vía `sesion_objetivos`). Se aplazó a propósito hasta tener uso real.
+- Plantilla recurrente de entrenamientos (día de la semana fijo, pabellón,
+  franjas tipo) de la que nacería cada semana — solo si al usar el
+  planificador día a día resulta que la mayoría de semanas se repite.
 
 ## Filosofía de diseño
 Minimizar fricción durante el partido: registro rápido tipo formulario de

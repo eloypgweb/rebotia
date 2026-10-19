@@ -517,6 +517,55 @@ insert into public.objetivos (categoria, titulo, orden) values
   ('Higiénicos', 'Cuidado del material y prevención de lesiones', 67);
 
 -- =========================================================
+-- 12. sesiones_entrenamiento
+-- =========================================================
+create table public.sesiones_entrenamiento (
+  id uuid primary key default gen_random_uuid(),
+  fecha date not null unique,
+  contenido text,
+  autor_id uuid references public.perfiles (id),
+  created_at timestamptz not null default now()
+);
+
+alter table public.sesiones_entrenamiento enable row level security;
+
+create policy "sesiones_entrenamiento_select_authenticated"
+  on public.sesiones_entrenamiento for select to authenticated using (true);
+
+create policy "sesiones_entrenamiento_insert_admin_editor"
+  on public.sesiones_entrenamiento for insert to authenticated
+  with check (public.es_admin_o_editor());
+
+create policy "sesiones_entrenamiento_update_admin_editor"
+  on public.sesiones_entrenamiento for update to authenticated
+  using (public.es_admin_o_editor())
+  with check (public.es_admin_o_editor());
+
+-- =========================================================
+-- 13. sesion_objetivos
+-- =========================================================
+create table public.sesion_objetivos (
+  fecha date not null references public.sesiones_entrenamiento (fecha) on delete cascade,
+  objetivo_id uuid not null references public.objetivos (id) on delete cascade,
+  primary key (fecha, objetivo_id)
+);
+
+create index sesion_objetivos_objetivo_id_idx on public.sesion_objetivos (objetivo_id);
+
+alter table public.sesion_objetivos enable row level security;
+
+create policy "sesion_objetivos_select_authenticated"
+  on public.sesion_objetivos for select to authenticated using (true);
+
+create policy "sesion_objetivos_insert_admin_editor"
+  on public.sesion_objetivos for insert to authenticated
+  with check (public.es_admin_o_editor());
+
+create policy "sesion_objetivos_delete_admin_editor"
+  on public.sesion_objetivos for delete to authenticated
+  using (public.es_admin_o_editor());
+
+-- =========================================================
 -- Nota: crear el primer admin (ejecutar aparte, después de que ese
 -- usuario ya exista en auth.users -- lo crea el admin desde
 -- Authentication → Users con email + contraseña -- y el trigger le haya

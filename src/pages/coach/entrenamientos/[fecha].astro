@@ -1,0 +1,231 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import { formatearDia } from '../../../lib/fechas';
+import { lunesDeFecha, fechaDesdeISO, aFechaISO, esDiaEntreno, numeroSesion } from '../../../lib/semana';
+import { CATEGORIAS_TABLA_SEMANAL } from '../../../lib/objetivos';
+
+const { fecha } = Astro.params;
+const { user } = Astro.locals;
+
+if (!fecha || !/^\d{4}-\d{2}-\d{2}$/.test(fecha) || !esDiaEntreno(fechaDesdeISO(fecha))) {
+  return Astro.redirect('/coach/entrenamientos');
+}
+
+let error: string | null = null;
+
+if (Astro.request.method === 'POST') {
+  const formData = await Astro.request.formData();
+  const contenido = formData.get('contenido')?.toString() ?? '';
+
+  const { error: upsertError } = await Astro.locals.supabase
+    .from('sesiones_entrenamiento')
+    .upsert({ fecha, contenido, autor_id: user?.id }, { onConflict: 'fecha' });
+
+  if (upsertError) {
+    error = upsertError.message;
+  } else {
+    const { data: todosObjetivos } = await Astro.locals.supabase.from('objetivos').select('id');
+    const seleccionados = (todosObjetivos ?? [])
+      .filter((o) => formData.get(`objetivo_${o.id}`) === 'on')
+      .map((o) => ({ fecha, objetivo_id: o.id }));
+
+    await Astro.locals.supabase.from('sesion_objetivos').delete().eq('fecha', fecha);
+
+    if (seleccionados.length > 0) {
+      const { error: errorObjetivos } = await Astro.locals.supabase.from('sesion_objetivos').insert(seleccionados);
+      if (errorObjetivos) error = errorObjetivos.message;
+    }
+
+    if (!error) {
+      return Astro.redirect(`/coach/entrenamientos/${fecha}`);
+    }
+  }
+}
+
+const [{ data: sesion }, { data: objetivos }, { data: objetivosSesion }] = await Promise.all([
+  Astro.locals.supabase.from('sesiones_entrenamiento').select('*').eq('fecha', fecha).maybeSingle(),
+  Astro.locals.supabase.from('objetivos').select('id, categoria, titulo').order('orden'),
+  Astro.locals.supabase.from('sesion_objetivos').select('objetivo_id').eq('fecha', fecha),
+]);
+
+const idsSeleccionados = new Set((objetivosSesion ?? []).map((o) => o.objetivo_id));
+
+const categoriasTodas: { nombre: string; objetivos: typeof objetivos }[] = [];
+for (const objetivo of objetivos ?? []) {
+  let grupo = categoriasTodas.find((c) => c.nombre === objetivo.categoria);
+  if (!grupo) {
+    grupo = { nombre: objetivo.categoria, objetivos: [] };
+    categoriasTodas.push(grupo);
+  }
+  grupo.objetivos!.push(objetivo);
+}
+
+// Actitudinales e Higiénicos no se seleccionan por sesión (ver lib/objetivos.ts).
+const categorias = categoriasTodas.filter((c) => CATEGORIAS_TABLA_SEMANAL.includes(c.nombre));
+
+// Si alguna vez se seleccionó un objetivo de esas categorías excluidas, se
+// conserva (no se borra solo por haber quitado su categoría de la vista).
+const objetivosExcluidosYaSeleccionados = (objetivos ?? []).filter(
+  (o) => !CATEGORIAS_TABLA_SEMANAL.includes(o.categoria) && idsSeleccionados.has(o.id),
+);
+
+const lunesSemanaISO = aFechaISO(lunesDeFecha(fechaDesdeISO(fecha)));
+
+const inputClass =
+  'rounded-lg border border-club-blue/40 px-3 py-2 text-club-navy outline-none focus:border-club-blue focus:ring-2 focus:ring-club-blue/30';
+---
+
+<Layout title={`Entrenamiento — Rebotia`}>
+  <a
+    href={`/coach/entrenamientos?inicio=${lunesSemanaISO}`}
+    class="text-sm font-medium text-club-navy/70 hover:text-club-navy hover:underline"
+  >
+    ← Volver a la semana
+  </a>
+  <h1 class="mt-2 text-2xl font-bold text-club-navy">Sesión {numeroSesion(fecha)}</h1>
+  <p class="text-sm text-club-navy/60">{formatearDia(fecha, 'completo')}</p>
+
+  <form method="POST" class="mt-6 flex flex-col gap-6">
+    {error && <p class="text-sm text-red-600">{error}</p>}
+
+    <section class="rounded-xl border border-club-blue/30 bg-white p-6 shadow-sm">
+      <h2 class="text-sm font-semibold text-club-navy">Objetivos a trabajar</h2>
+
+      <div class="mt-3 divide-y divide-club-blue/15 rounded-xl border border-club-blue/20">
+        {categorias.map((categoria) => (
+          <details class="group">
+            <summary class="cursor-pointer list-none px-4 py-2.5 text-sm font-medium text-club-navy/70 transition-colors hover:text-club-navy [&::-webkit-details-marker]:hidden">
+              <span class="mr-1.5 inline-block text-club-navy/40 transition-transform group-open:rotate-90">▸</span>
+              {categoria.nombre}
+            </summary>
+            <div class="flex flex-col gap-2.5 px-4 pb-3 pl-9">
+              {categoria.objetivos!.map((objetivo) => (
+                <label class="flex items-start gap-2.5 text-sm text-club-navy">
+                  <span class="relative mt-0.5 inline-flex h-5 w-5 shrink-0">
+                    <input
+                      type="checkbox"
+                      name={`objetivo_${objetivo.id}`}
+                      checked={idsSeleccionados.has(objetivo.id)}
+                      data-objetivo-checkbox
+                      data-objetivo-titulo={objetivo.titulo}
+                      data-categoria={categoria.nombre}
+                      class="peer absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                    />
+                    <span class="pointer-events-none absolute inset-0 rounded-md border border-club-blue/40 bg-white transition-colors peer-checked:border-club-navy peer-checked:bg-club-navy" />
+                    <svg
+                      class="pointer-events-none absolute inset-0 m-auto hidden h-3 w-3 text-club-white peer-checked:block"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                    >
+                      <path d="M3.5 8.5L6.5 11.5L12.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                  </span>
+                  {objetivo.titulo}
+                </label>
+              ))}
+            </div>
+          </details>
+        ))}
+      </div>
+
+      {objetivosExcluidosYaSeleccionados.map((objetivo) => (
+        <input type="hidden" name={`objetivo_${objetivo.id}`} value="on" />
+      ))}
+
+      <details class="mt-4 rounded-xl border border-club-blue/20">
+        <summary class="cursor-pointer list-none px-4 py-2.5 text-sm font-medium text-club-navy/70 [&::-webkit-details-marker]:hidden">
+          <span id="resumen-contador">Ningún objetivo añadido todavía</span>
+        </summary>
+        <div id="resumen-objetivos" class="flex flex-col gap-2 border-t border-club-blue/15 px-4 py-3"></div>
+      </details>
+    </section>
+
+    <section class="rounded-xl border border-club-blue/30 bg-white p-6 shadow-sm">
+      <div class="flex flex-col gap-1">
+        <label for="contenido" class="text-sm font-medium text-club-navy">
+          Plan del entrenamiento
+        </label>
+        <textarea
+          id="contenido"
+          name="contenido"
+          rows="14"
+          placeholder="Ejercicios, franjas horarias, lo que necesites..."
+          class={inputClass}
+        >{sesion?.contenido ?? ''}</textarea>
+      </div>
+    </section>
+
+    <button
+      type="submit"
+      class="self-start rounded-lg bg-club-navy px-6 py-2.5 text-sm font-semibold text-club-white transition-colors hover:bg-club-blue hover:text-club-navy"
+    >
+      Guardar
+    </button>
+  </form>
+</Layout>
+
+<script>
+  const casillas = Array.from(document.querySelectorAll<HTMLInputElement>('[data-objetivo-checkbox]'));
+  const resumen = document.getElementById('resumen-objetivos');
+  const contador = document.getElementById('resumen-contador');
+
+  const renderizarResumen = () => {
+    if (!resumen || !contador) return;
+    resumen.textContent = '';
+
+    const porCategoria = new Map<string, HTMLInputElement[]>();
+    casillas.forEach((casilla) => {
+      if (!casilla.checked) return;
+      const categoria = casilla.dataset.categoria ?? '';
+      const lista = porCategoria.get(categoria) ?? [];
+      lista.push(casilla);
+      porCategoria.set(categoria, lista);
+    });
+
+    const total = casillas.filter((c) => c.checked).length;
+    contador.textContent =
+      total === 0
+        ? 'Ningún objetivo añadido todavía'
+        : `🎯 ${total} objetivo${total === 1 ? '' : 's'} seleccionado${total === 1 ? '' : 's'} — ver detalle`;
+
+    porCategoria.forEach((casillasCategoria, categoria) => {
+      const bloque = document.createElement('div');
+
+      const etiqueta = document.createElement('p');
+      etiqueta.className = 'text-xs font-semibold uppercase tracking-wide text-club-navy/40';
+      etiqueta.textContent = categoria;
+      bloque.appendChild(etiqueta);
+
+      const fila = document.createElement('div');
+      fila.className = 'mt-1 flex flex-wrap gap-1.5';
+
+      casillasCategoria.forEach((casilla) => {
+        const chip = document.createElement('span');
+        chip.className =
+          'inline-flex items-center gap-1 rounded-full bg-club-blue/15 px-2 py-0.5 text-xs text-club-navy';
+
+        const texto = document.createElement('span');
+        texto.textContent = casilla.dataset.objetivoTitulo ?? '';
+
+        const quitar = document.createElement('button');
+        quitar.type = 'button';
+        quitar.className = 'font-bold text-club-navy/50 hover:text-red-600';
+        quitar.setAttribute('aria-label', 'Quitar');
+        quitar.textContent = '×';
+        quitar.addEventListener('click', () => {
+          casilla.checked = false;
+          renderizarResumen();
+        });
+
+        chip.append(texto, quitar);
+        fila.appendChild(chip);
+      });
+
+      bloque.appendChild(fila);
+      resumen.appendChild(bloque);
+    });
+  };
+
+  casillas.forEach((casilla) => casilla.addEventListener('change', renderizarResumen));
+  renderizarResumen();
+</script>

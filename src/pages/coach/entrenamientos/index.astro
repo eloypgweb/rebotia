@@ -1,0 +1,133 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import { formatearDia } from '../../../lib/fechas';
+import { lunesDeFecha, sumarDias, aFechaISO, fechaDesdeISO, esDiaEntreno, numeroSesion, NOMBRES_DIA } from '../../../lib/semana';
+import { CATEGORIAS_TABLA_SEMANAL } from '../../../lib/objetivos';
+
+const inicioParam = Astro.url.searchParams.get('inicio');
+const lunes = inicioParam ? lunesDeFecha(fechaDesdeISO(inicioParam)) : lunesDeFecha(new Date());
+
+const diasSemana = Array.from({ length: 7 }, (_, i) => sumarDias(lunes, i));
+const diasEntreno = diasSemana.filter(esDiaEntreno);
+const diasISO = diasEntreno.map(aFechaISO);
+
+const [{ data: sesiones }, { data: objetivosSemana }] = await Promise.all([
+  Astro.locals.supabase
+    .from('sesiones_entrenamiento')
+    .select('fecha, contenido')
+    .gte('fecha', aFechaISO(lunes))
+    .lte('fecha', aFechaISO(sumarDias(lunes, 6))),
+  Astro.locals.supabase
+    .from('sesion_objetivos')
+    .select('fecha, objetivo:objetivo_id(titulo, categoria)')
+    .gte('fecha', aFechaISO(lunes))
+    .lte('fecha', aFechaISO(sumarDias(lunes, 6))),
+]);
+
+const sesionPorFecha = new Map((sesiones ?? []).map((s) => [s.fecha, s]));
+
+// fecha -> categoria -> [titulos]
+const objetivosPorFechaYCategoria = new Map<string, Map<string, string[]>>();
+for (const fila of objetivosSemana ?? []) {
+  const categoria = fila.objetivo?.categoria;
+  const titulo = fila.objetivo?.titulo;
+  if (!categoria || !titulo) continue;
+
+  const porCategoria = objetivosPorFechaYCategoria.get(fila.fecha) ?? new Map<string, string[]>();
+  const lista = porCategoria.get(categoria) ?? [];
+  lista.push(titulo);
+  porCategoria.set(categoria, lista);
+  objetivosPorFechaYCategoria.set(fila.fecha, porCategoria);
+}
+
+const semanaAnteriorISO = aFechaISO(sumarDias(lunes, -7));
+const semanaSiguienteISO = aFechaISO(sumarDias(lunes, 7));
+const esSemanaActual = aFechaISO(lunes) === aFechaISO(lunesDeFecha(new Date()));
+---
+
+<Layout title="Entrenamientos — Rebotia">
+  <a href="/coach" class="text-sm font-medium text-club-navy/70 hover:text-club-navy hover:underline">
+    ← Volver a Coach
+  </a>
+  <h1 class="mt-2 text-2xl font-bold text-club-navy">Entrenamientos</h1>
+
+  <div class="mt-4 flex items-center justify-between gap-2">
+    <a
+      href={`/coach/entrenamientos?inicio=${semanaAnteriorISO}`}
+      class="rounded-lg border border-club-blue/40 px-3 py-1.5 text-sm font-medium text-club-navy transition-colors hover:bg-club-blue/10"
+    >
+      ← Anterior
+    </a>
+    <p class="text-center text-sm font-semibold text-club-navy">
+      {formatearDia(aFechaISO(lunes), 'medio')} – {formatearDia(aFechaISO(sumarDias(lunes, 6)), 'medio')}
+      {esSemanaActual && <span class="ml-1 text-club-navy/50">(esta semana)</span>}
+    </p>
+    <a
+      href={`/coach/entrenamientos?inicio=${semanaSiguienteISO}`}
+      class="rounded-lg border border-club-blue/40 px-3 py-1.5 text-sm font-medium text-club-navy transition-colors hover:bg-club-blue/10"
+    >
+      Siguiente →
+    </a>
+  </div>
+
+  <div class="mt-6 flex flex-col gap-3">
+    {
+      diasISO.map((iso) => {
+        const sesion = sesionPorFecha.get(iso);
+        const tienePlan = !!sesion?.contenido?.trim();
+        const porCategoria = objetivosPorFechaYCategoria.get(iso);
+        const nombreDia = NOMBRES_DIA[(fechaDesdeISO(iso).getDay() + 6) % 7];
+        return (
+          <a
+            href={`/coach/entrenamientos/${iso}`}
+            class="flex flex-col gap-3 rounded-xl border border-club-blue/30 bg-white p-4 shadow-sm transition-colors hover:border-club-blue hover:bg-club-blue/10"
+          >
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <p class="font-medium text-club-navy">
+                  {nombreDia} <span class="text-club-navy/40">· Sesión {numeroSesion(iso)}</span>
+                </p>
+                <p class="text-sm text-club-navy/60">{formatearDia(iso, 'medio')}</p>
+              </div>
+              <span class={`shrink-0 text-sm font-medium ${tienePlan ? 'text-club-navy' : 'text-club-navy/40'}`}>
+                {tienePlan ? '📝 Con plan' : 'Sin plan'}
+              </span>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="w-full min-w-[480px] table-fixed text-left text-[11px]">
+                <thead>
+                  <tr>
+                    {CATEGORIAS_TABLA_SEMANAL.map((categoria) => (
+                      <th class="border-b border-club-blue/20 px-1.5 py-1 font-medium text-club-navy/50">{categoria}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="align-top">
+                    {CATEGORIAS_TABLA_SEMANAL.map((categoria) => {
+                      const titulos = porCategoria?.get(categoria) ?? [];
+                      return (
+                        <td class="px-1.5 py-1.5 text-club-navy">
+                          {titulos.length === 0 ? (
+                            <span class="text-club-navy/30">—</span>
+                          ) : (
+                            <ul class="flex flex-col gap-1">
+                              {titulos.map((titulo) => (
+                                <li class="rounded bg-club-blue/10 px-1 py-0.5 leading-snug">{titulo}</li>
+                              ))}
+                            </ul>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </a>
+        );
+      })
+    }
+  </div>
+</Layout>
